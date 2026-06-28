@@ -140,7 +140,17 @@ def run_simulation(n, n_samples=0):
                 for k, v in d.items()]
         return sorted(rows, key=lambda r: r[key], reverse=True)
 
-    title_odds = [r for r in odds(winners, "pct") if r["pct"] > 0]  # teams that ever won
+    # Title odds over every team STILL IN the competition — not just those that won a
+    # sim, but excluding teams already eliminated. "Alive" = reachable in the knockout
+    # stage at all (present in stage_reach; group-eliminated teams never are) and not the
+    # loser of an already-played knockout game. This keeps long-shot survivors such as
+    # Cape Verde on the list (pct 0.0, i.e. "<1/n") while dropping knocked-out teams.
+    ko_losers = {ko["home"] if ko["winner"] == ko["away"] else ko["away"] for ko in KNOCKOUT}
+    alive = [t for t in extra["stage_reach"] if t not in ko_losers]
+    title_odds = sorted(
+        ({"team": str(t), "pct": round(winners.get(t, 0) / n * 100, 2)} for t in alive),
+        key=lambda r: (-r["pct"], r["team"]),
+    )
     andreas_xpts = odds(andreas, "xpts")
     trap_xpts = odds(trap, "xpts")
 
