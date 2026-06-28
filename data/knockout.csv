@@ -8,6 +8,7 @@ round,home,away,reg,et,decider,winner
 # winner  : the team that advanced  (REQUIRED — for P the reg+et score is a draw)
 #
 # Examples (delete or keep as comments — lines starting with # are ignored):
+R32,Mexico,Ecuador,1-1,1-0,ET,Mexico
 #   R32,Mexico,Norway,2-1,,FT,Mexico
 #   R16,Spain,Brazil,1-1,0-0,P,Spain
 #   QF,France,England,1-1,1-0,ET,France
