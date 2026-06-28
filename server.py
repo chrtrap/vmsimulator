@@ -129,7 +129,8 @@ def run_simulation(n, n_samples=0):
     groups, tpp, elo, td, fx, res = DATA
     t0 = time.time()
     winners, andreas, trap, _, extra = wc.simulate_tournament(
-        groups, tpp, elo, td, fx, res, nsim=n, collect_paths=True, pools=POOLS, n_samples=n_samples)
+        groups, tpp, elo, td, fx, res, nsim=n, collect_paths=True, pools=POOLS,
+        n_samples=n_samples, knockout=KNOCKOUT)
     elapsed = time.time() - t0
     paths = extra["paths"]
 
@@ -145,6 +146,21 @@ def run_simulation(n, n_samples=0):
 
     # Most likely path: per knockout slot, the favourite + win%.
     slot_meta, slot_winner, slot_matchup = paths["slot_meta"], paths["slot_winner"], paths["slot_matchup"]
+    # Played knockout games keyed by (team-pair, round) -> real result, to mark them
+    # as realized (shown with the actual score, no percentage) in the most-likely path.
+    _PHASE = {"R32": "Round of 32", "R16": "Round of 16", "QF": "Quarterfinals",
+              "SF": "Semifinals", "FINAL": "Final", "BRONZE": "Third Place Match"}
+    _DEC = {"P": "Penalties", "ET": "ET", "FT": "FT"}
+    ko_real = {}
+    for ko in KNOCKOUT:
+        ph = _PHASE.get(ko["round"])
+        if ph and ko["home"] in PRICES and ko["away"] in PRICES:
+            ko_real[(frozenset((ko["home"], ko["away"])), ph)] = {
+                "a": ko["home"], "b": ko["away"],
+                "ga": ko["reg"][0] + ko["et"][0], "gb": ko["reg"][1] + ko["et"][1],
+                "w": ko["winner"], "decider": _DEC.get(ko["decider"], "FT"),
+            }
+
     rounds = []
     for rname in ROUND_ORDER:
         matches = []
@@ -155,6 +171,8 @@ def run_simulation(n, n_samples=0):
             mu = slot_matchup.get(num, {})
             mu_total = sum(mu.values()) or 1
             top_mu = max(mu.items(), key=lambda kv: kv[1]) if mu else ("", 0)
+            parts = top_mu[0].split(" vs ") if top_mu[0] else []
+            realized = ko_real.get((frozenset(parts), rname)) if len(parts) == 2 else None
             matches.append({
                 "num": num,
                 "fav": ranked[0][0] if ranked else "",
@@ -162,6 +180,7 @@ def run_simulation(n, n_samples=0):
                 "matchup": top_mu[0],
                 "matchup_pct": round(top_mu[1] / mu_total * 100, 1),
                 "winners": [{"team": t, "pct": round(c / total * 100, 1)} for t, c in ranked],
+                "realized": realized,
             })
         if matches:
             rounds.append({"name": rname, "matches": matches})
@@ -239,21 +258,24 @@ def run_simulation(n, n_samples=0):
         for r in rows:
             r["real_rank"] = rank_of[r["name"]]
 
-        if is_price:
-            o = optimal_andreas(ax)
-            optimal = {"xpts": round(o["xpts"], 2), "cost": o["cost"],
-                       "teams": [{"team": t, "price": PRICES.get(t), "xpts": round(ax.get(t, 0), 2)}
-                                 for t in o["teams"]]} if o else None
-        else:
-            o = optimal_trap(tx)
-            optimal = {"xpts": round(o["xpts"], 2),
-                       "teams": [{"team": t, "pot": POTS.get(t), "xpts": round(tx.get(t, 0), 2)}
-                                 for t in o["teams"]]}
+        opt_fn = optimal_andreas if is_price else optimal_trap
+
+        def fmt(o):  # shape an optimizer result for the API (None-safe)
+            if not o:
+                return None
+            teams = [{"team": t, **({"price": PRICES.get(t)} if is_price else {"pot": POTS.get(t)})}
+                     for t in o["teams"]]
+            d = {"xpts": round(o["xpts"], 2), "teams": teams}
+            if is_price:
+                d["cost"] = o["cost"]
+            return d
+
         pools_out[pn] = {
             "size": len(rows),
             "type": "price" if is_price else "pot",
             "budget": ANDREAS_BUDGET if is_price else None,
-            "optimal": optimal,
+            "optimal": fmt(opt_fn(xp)),            # best squad by expected points
+            "optimal_real": fmt(opt_fn(real_src)), # best squad by realized points so far
             "rows": rows,
         }
 

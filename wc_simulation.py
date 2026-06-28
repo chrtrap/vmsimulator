@@ -117,7 +117,7 @@ def _pool_sort_key(teams, pts_map, pots=None, gf=None, ga=None):
     return key
 
 
-def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtures, results, nsim=50000, print_results=False, skip_group_stage=False, collect_paths=False, pools=None, n_samples=0):
+def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtures, results, nsim=50000, print_results=False, skip_group_stage=False, collect_paths=False, pools=None, n_samples=0, knockout=None):
     timestart = time.time()
     all_teams = [team for group in groups for team in group]
     points_map = {team: (i,j) for i,group in enumerate(groups) for j,team in enumerate(group)}
@@ -138,6 +138,23 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
         played[(r['HT'], r['AT'])] = (int(r['GH']), int(r['GA']))
         current_elo[r['HT']] = r['H_elo']   # latest match wins -> most recent Elo
         current_elo[r['AT']] = r['A_elo']
+
+    # Played knockout games (data/knockout.csv) pinned into the simulation: the bracket
+    # carries the real winner forward instead of re-simulating. Keyed by unordered team
+    # pair, matched by round so a pair is only pinned in its actual round.
+    _ko_phase = {'R32': 'Round of 32', 'R16': 'Round of 16', 'QF': 'Quarterfinals',
+                 'SF': 'Semifinals', 'FINAL': 'Final', 'BRONZE': 'Third Place Match'}
+    _ko_dec = {'P': 'Penalties', 'ET': 'ET', 'FT': 'FT'}
+    played_ko = {}
+    for ko in (knockout or []):
+        h, aw, win = ko['home'], ko['away'], ko['winner']
+        if h not in points_map or aw not in points_map or win not in points_map:
+            continue
+        played_ko[frozenset((h, aw))] = {
+            'phase': _ko_phase.get(ko['round']),
+            'home': h, 'th': ko['reg'][0] + ko['et'][0], 'ta': ko['reg'][1] + ko['et'][1],
+            'winner': win, 'decider': _ko_dec.get(ko['decider'], 'FT'),
+        }
 
     # Aggregators for the "most likely path" view (only filled if collect_paths=True)
     slot_meta = {}       # match_num -> round name
@@ -382,9 +399,16 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
             for match_num, (team_a, team_b) in matches.items():
                 t1 = inv_team_dict[team_a]
                 t2 = inv_team_dict[team_b]
-                raw_outcome, g_a, g_b, decider = match_simulator.simulate_knockout_match((t1, t2), temp_elo_dict)
+                pin = played_ko.get(frozenset((team_a, team_b)))
+                if pin and pin['phase'] == phase_name:        # real played result -> pin it
+                    outcome = pin['winner']
+                    raw_outcome = inv_team_dict[outcome]
+                    decider = pin['decider']
+                    g_a, g_b = (pin['th'], pin['ta']) if team_a == pin['home'] else (pin['ta'], pin['th'])
+                else:
+                    raw_outcome, g_a, g_b, decider = match_simulator.simulate_knockout_match((t1, t2), temp_elo_dict)
+                    outcome = team_dict[raw_outcome]
                 match_simulator.update_elo(raw_outcome, (t1, t2), temp_elo_dict)
-                outcome = team_dict[raw_outcome]
                 if print_results:
                     print(f'{match_num}. {team_a} - {team_b}')
                     print(f'Result: {g_a} - {g_b}')

@@ -67,6 +67,8 @@
   .score{position:relative;z-index:1;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--gold)}
   .decider{font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:4px;padding:0 4px}
   .match.final{border-color:var(--accent);box-shadow:0 0 0 1px rgba(33,211,162,.4),0 6px 20px rgba(33,211,162,.13)}
+  .match.real{border-color:var(--accent);background:#15231d}
+  .match .mu.real{color:var(--accent);font-weight:700;letter-spacing:.3px}
   .match.third{border-style:dashed;border-color:var(--line);background:transparent;margin-top:16px;opacity:.5}
   .match.third .thlbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);margin-bottom:5px}
   .match.third .team.win .nm{color:var(--dim);font-weight:400}
@@ -346,19 +348,40 @@ function renderBracket(d, sample){
   const colOrder = ["Round of 32","Round of 16","Quarterfinals","Semifinals","Final"];
   const byR = {};
   let cardOf;
+  // Which (round, team-pair) games are real played results — to highlight them everywhere.
+  const realKey = (round, a, b) => round + "|" + [a, b].slice().sort().join("|");
+  const realizedSet = new Set();
+  (d.rounds || []).forEach(rd => rd.matches.forEach(m => {
+    if(m.realized) realizedSet.add(realKey(rd.name, m.realized.a, m.realized.b));
+  }));
   if(sample){
     sample.forEach(m => (byR[m.round] ??= []).push(m));
     Object.values(byR).forEach(a => a.sort((x,y)=>x.num-y.num));
-    cardOf = (m, kind='') => `
-      <div class="match${kind?' '+kind:''}">
-        ${kind==='third' ? '<div class="thlbl">Bronzekamp · tæller ikke</div>' : ''}
+    cardOf = (m, kind='') => {
+      const real = realizedSet.has(realKey(m.round, m.a, m.b));
+      const top = real
+        ? `<div class="mu real">✓ Spillet${m.decider!=="FT" ? " · "+deciderDa(m.decider) : ""}</div>`
+        : (kind==='third' ? '<div class="thlbl">Bronzekamp · tæller ikke</div>' : '');
+      const decBadge = (!real && m.decider!=="FT")
+        ? `<div style="text-align:right"><span class="decider">${deciderDa(m.decider)}</span></div>` : "";
+      return `<div class="match${kind?' '+kind:''}${real?' real':''}">
+        ${top}
         <div class="team ${m.w===m.a?'win':''}"><span class="nm">${ft(m.a)}</span><span class="score">${m.ga}</span></div>
         <div class="team ${m.w===m.b?'win':''}"><span class="nm">${ft(m.b)}</span><span class="score">${m.gb}</span></div>
-        ${m.decider!=="FT"?`<div style="text-align:right"><span class="decider">${deciderDa(m.decider)}</span></div>`:""}
+        ${decBadge}
       </div>`;
+    };
   } else {
     d.rounds.forEach(rd => byR[rd.name] = rd.matches);
     cardOf = (m, kind='') => {
+      if(m.realized){                              // real played game: actual score, highlighted, no %
+        const r = m.realized;
+        return `<div class="match real${kind?' '+kind:''}">
+          <div class="mu real">✓ Spillet${r.decider!=="FT" ? " · "+deciderDa(r.decider) : ""}</div>
+          <div class="team ${r.w===r.a?'win':''}"><span class="nm">${ft(r.a)}</span><span class="score">${r.ga}</span></div>
+          <div class="team ${r.w===r.b?'win':''}"><span class="nm">${ft(r.b)}</span><span class="score">${r.gb}</span></div>
+        </div>`;
+      }
       const mu = m.matchup_pct < 99.5 ? `${da2(m.matchup)} · ${m.matchup_pct}%` : da2(m.matchup);
       return `<div class="match${kind?' '+kind:''}">
         <div class="mu">${mu}</div>
@@ -408,11 +431,12 @@ function renderPools(d, scenario){
         </div>`).join("")}
       </div>`;
     }
-    const o = p.optimal;
+    const useReal = POOL_SORT === "real";
+    const o = useReal ? p.optimal_real : p.optimal;
     const optCard = o ? `<div class="pcard opt">
         <div class="phead"><span class="prank">★</span>
-          <span class="pname">Optimalt hold</span>
-          <span class="pxp">${o.xpts.toFixed(2)} xPoint</span>
+          <span class="pname">${useReal ? "Optimalt hold (indtil nu)" : "Optimalt hold (forventet)"}</span>
+          <span class="pxp">${o.xpts.toFixed(2)} ${useReal ? "point" : "xPoint"}</span>
           <span class="pwin">${isPrice ? `pris ${o.cost}/${p.budget}` : 'bedst pr. pot'}</span>
         </div>
         <div class="chips">${o.teams.map(t=>tag(t,isPrice)).join("")}</div>
