@@ -125,11 +125,11 @@ def optimal_trap(xpts):
     return {"teams": pick, "xpts": sum(xpts[t] for t in pick)}
 
 
-def run_simulation(n):
+def run_simulation(n, n_samples=0):
     groups, tpp, elo, td, fx, res = DATA
     t0 = time.time()
     winners, andreas, trap, _, extra = wc.simulate_tournament(
-        groups, tpp, elo, td, fx, res, nsim=n, collect_paths=True, pools=POOLS)
+        groups, tpp, elo, td, fx, res, nsim=n, collect_paths=True, pools=POOLS, n_samples=n_samples)
     elapsed = time.time() - t0
     paths = extra["paths"]
 
@@ -267,30 +267,18 @@ def run_simulation(n):
         "trap_xpts": trap_xpts,
         "teams": team_rows,
         "rounds": rounds,
-        "sample": paths["sample"],   # last sim's actual bracket w/ scores (used when n==1)
         "stage_reach": stage_reach,
         "groups": group_tables,
         "pools": pools_out,
+        # Scenarios drawn from THIS run: {bracket, scores:{pool:{participant:pts}}}.
+        "samples": extra.get("samples", []),
     }
 
 
-def sample_brackets(count):
-    """A pool of independent single-tournament brackets (cheap — no pools/optimal)."""
-    groups, tpp, elo, td, fx, res = DATA
-    out = []
-    for _ in range(count):
-        *_, extra = wc.simulate_tournament(groups, tpp, elo, td, fx, res,
-                                           nsim=1, collect_paths=True)
-        out.append(extra["paths"]["sample"])
-    return out
-
-
-def build_payload(n_stats=10000, n_samples=200):
-    """The full static payload: N-sim stats + a pool of single-sim sample brackets.
+def build_payload(n_stats=10000, n_samples=300):
+    """Full static payload: N-sim stats + a pool of scenarios sampled from the same run.
     Served live at /data.json and written to disk by build.py."""
-    data = run_simulation(n_stats)
-    data["samples"] = sample_brackets(n_samples)
-    return data
+    return run_simulation(n_stats, n_samples)
 
 
 _PAYLOAD_CACHE = None

@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VM 2026 Simulator</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text x='16' y='17' font-size='26' text-anchor='middle' dominant-baseline='central'>⚽</text></svg>">
+<meta name="theme-color" content="#0e1116">
 <style>
   :root{
     --bg:#0e1116; --panel:#171c24; --panel2:#1f2630; --line:#2a323d;
@@ -119,6 +121,10 @@
     border-radius:8px;padding:7px 20px;cursor:pointer;font-size:14px;font-weight:700}
   .cbtn:hover{color:var(--txt)}
   .cbtn.active{color:#04221a;background:var(--accent);border-color:var(--accent)}
+  .modebtn{background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+    border-radius:8px;padding:8px 16px;cursor:pointer;font-size:14px;font-weight:600}
+  .modebtn:hover{color:var(--txt)}
+  .modebtn.active{color:#04221a;background:var(--accent);border-color:var(--accent)}
   .note{color:var(--dim);font-size:12.5px;margin:8px 0 0}
   .hide{display:none}
   .err{color:#ff7a7a}
@@ -129,15 +135,13 @@
 <div class="wrap">
   <header>
     <h1>⚽ VM 2026 — Monte Carlo-simulator</h1>
-    <p>Spillede gruppekampe bruger de rigtige resultater; resten simuleres ud fra Elo. Kør N turneringer og udforsk oddsene.</p>
+    <p>Spillede kampe bruger de rigtige resultater; resten simuleres ud fra Elo.</p>
   </header>
 
   <div class="controls">
-    <label for="n">Simuleringer</label>
-    <input type="number" id="n" min="1" max="50000" value="10000">
-    <span class="preset" data-n="1">1 (tilfældig)</span>
-    <span class="preset" data-n="10000">10.000</span>
-    <button class="run" id="run">Kør</button>
+    <span style="color:var(--dim);font-size:13px">Visning</span>
+    <span class="modebtn active" data-mode="stats">📊 Forventet</span>
+    <span class="modebtn" data-mode="single">🎲 Ny tilfældig turnering</span>
     <span class="status" id="status">Klar.</span>
   </div>
 
@@ -187,7 +191,7 @@
             <span class="psort" data-by="xpts">Forventet</span>
           </div>
           <div id="pools"></div>
-          <p class="note"><b>Nuværende</b> = realiserede point fra spillede kampe (bonus for gruppeplacering gives kun for færdigspillede grupper). <b>Forventet</b> = simulerede slutpoint (xPoint). ★ Optimalt hold = højest mulige forventede hold lige nu.</p>
+          <p class="note"><b>Nuværende</b> = realiserede point fra spillede kampe. <b>Forventet</b> = simulerede slutpoint (xPoint). ★ Optimalt hold = højest mulige forventede hold lige nu.</p>
         </div>
 
         <div class="view" id="v-stages">
@@ -202,7 +206,7 @@
           <div class="panel">
             <h2>Gruppestillinger</h2>
             <div class="ggrid" id="groups"></div>
-            <p class="note">Bjælker viser P(1.·2.·3.·4.). De fleste grupper er afgjort; uafgjorte placeringer kan stadig variere via fair play/lodtrækning. Avancerer% inkluderer bedste-treer-vejen.</p>
+            <p class="note">Bjælker viser P(1.·2.·3.·4.). Avancerer% inkluderer bedste-treer-vejen.</p>
           </div>
         </div>
 
@@ -231,8 +235,9 @@
 
 <script>
 const $ = s => document.querySelector(s);
-let LAST = null;     // baked data.json payload (stats + sample-bracket pool)
-let CUR_N = 10000;   // current view: 1 = a random sample bracket, else the baked N
+let LAST = null;     // baked data.json payload (stats + scenario pool)
+let MODE = "stats";  // "stats" = baked N-sim view · "single" = one random scenario
+let SAMPLE = null;   // currently shown scenario {bracket, scores}
 
 // Selected competition (drives the Konkurrence + Hold-xPoint views), persisted in the URL.
 const params = new URLSearchParams(location.search);
@@ -279,7 +284,7 @@ async function boot(){
     const res = await fetch("data.json", {cache: "no-store"});
     LAST = await res.json();
     if(LAST.error) throw new Error(LAST.error);
-    run();
+    render();
   }catch(e){
     $("#err").textContent = "Kunne ikke hente data.json: " + e.message;
     $("#err").classList.remove("hide");
@@ -287,30 +292,21 @@ async function boot(){
   }
 }
 
-function run(){
-  if(!LAST) return;
-  let n = Math.max(1, parseInt($("#n").value || "10000", 10));
-  if(n !== 1) n = LAST.n;          // static build: only "1" or the baked N are meaningful
-  CUR_N = n;
-  $("#n").value = n;
-  render();
-  const info = LAST.realized_info || {};
-  $("#status").textContent = n === 1
-    ? "Ét tilfældigt scenarie — tryk Kør igen for et nyt"
-    : `Forventet over ${LAST.n.toLocaleString("da-DK")} simuleringer · ${info.played ?? "?"} kampe spillet`;
+function reroll(){   // pick a new random scenario from the pool
+  const pool = (LAST && LAST.samples) ? LAST.samples : [];
+  SAMPLE = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
 }
 
 function render(){
   if(!LAST) return;
   $("#out").classList.remove("hide");
   const d = LAST;
-  const single = CUR_N === 1;
+  const single = MODE === "single";
+  const sampleBracket = single && SAMPLE ? SAMPLE.bracket : null;
+  const scenario = single && SAMPLE ? SAMPLE.scores : null;
 
-  let sample = null;
   if(single){
-    const pool = d.samples || [];
-    sample = pool.length ? pool[Math.floor(Math.random() * pool.length)] : (d.sample || null);
-    const fin = sample && sample.find(m => m.round === "Final");
+    const fin = sampleBracket && sampleBracket.find(m => m.round === "Final");
     $("#champLabel").textContent = "Vinder (ét tilfældigt scenarie)";
     $("#champName").innerHTML = fin ? ft(fin.w) : "—";
     $("#champPct").textContent = "";
@@ -327,16 +323,22 @@ function render(){
       <div class="track"><div class="fill" style="width:${Math.max(2, r.pct/top*100)}%"></div></div>
     </div>`).join("") || '<div class="note">Ingen vinder registreret.</div>';
 
-  renderBracket(d, sample);
+  renderBracket(d, sampleBracket);
   $("#pathTitle").textContent = single ? "Slutspil (ét tilfældigt scenarie)" : "Mest sandsynlige vej";
   $("#pathNote").textContent = single
-    ? "Ét muligt forløb. Tryk Kør igen for et nyt tilfældigt scenarie. (Øvrige faner viser de samlede odds.)"
-    : "Hver kamp viser holdet, der oftest vandt netop den plads. Kampe kan ændre sig når Gruppe J / 3.-plads-kvalifikationen ændres. Bronzekampen vises kun for et enkelt scenarie.";
+    ? "Ét muligt forløb fra de simulerede turneringer. Tryk 🎲 igen for et nyt. (Runde-odds, Grupper og Hold-xPoint viser de samlede tal.)"
+    : "Hver kamp viser holdet, der oftest vandt netop den plads. Bronzekampen vises kun for et enkelt scenarie.";
 
-  renderPools(d);
+  $("#poolSort").style.display = single ? "none" : "flex";
+  renderPools(d, scenario);
   renderStages(d);
   renderGroups(d);
   renderTeams();
+
+  const info = d.realized_info || {};
+  $("#status").textContent = single
+    ? "Ét tilfældigt scenarie — tryk 🎲 igen for et nyt"
+    : `Forventet over ${d.n.toLocaleString("da-DK")} simuleringer · ${info.played ?? "?"} kampe spillet`;
 }
 
 function renderBracket(d, sample){
@@ -384,7 +386,7 @@ function da2(s){
 }
 
 let POOL_SORT = "real";   // 'real' = current standing, 'xpts' = expected
-function renderPools(d){
+function renderPools(d, scenario){
   const order = [capComp()];   // show only the selected competition
   const tag = (t, isPrice) => isPrice
     ? `<span class="chip">${ft(t.team)} <b>$${t.price}</b></span>`
@@ -392,6 +394,20 @@ function renderPools(d){
   $("#pools").innerHTML = order.filter(k=>d.pools[k]).map(k => {
     const p = d.pools[k];
     const isPrice = p.type === "price";
+    if(scenario){                                   // single scenario: this run's standing
+      const sc = scenario[k] || {};
+      const pr = p.rows.slice().sort((a,b)=>(sc[b.name]||0)-(sc[a.name]||0));
+      return `<div class="panel pool"><h2>${k}-konkurrence · dette scenarie</h2>
+        ${pr.map((r,i)=>`<div class="pcard">
+          <div class="phead">
+            <span class="prank">${i+1}</span>
+            <span class="pname">${r.name}</span>
+            <span class="pxp">${(sc[r.name]||0).toFixed(2)} point</span>
+          </div>
+          <div class="chips">${r.teams.map(t=>tag(t,isPrice)).join("")}</div>
+        </div>`).join("")}
+      </div>`;
+    }
     const o = p.optimal;
     const optCard = o ? `<div class="pcard opt">
         <div class="phead"><span class="prank">★</span>
@@ -461,39 +477,65 @@ function cell(r,c){
 function renderTeams(){
   if(!LAST) return;
   const isTrap = COMP === "trap";
-  $("#teamsTitle").textContent = isTrap ? "Trap — hold-xPoint" : "Andreas — hold-xPoint";
-  $("#teamsNote").textContent = isTrap
-    ? "Trap-scoring. Pot = seedningslag. Point = realiserede point indtil nu · xPoint = forventede slutpoint. Klik på en kolonne for at sortere; filtrér på pot."
-    : "Andreas-scoring. Pris = budgetomkostning. Point = realiserede point indtil nu · xPoint = forventede slutpoint. Klik på en kolonne for at sortere.";
+  const metric = isTrap ? "trap" : "andreas";
+  const single = MODE === "single" && SAMPLE && SAMPLE.team;
   $("#potFilter").style.display = isTrap ? "flex" : "none";
-  const cols = isTrap
-    ? [{k:"team",l:"Hold"},{k:"pot",l:"Pot",n:1},{k:"trap_real",l:"Point",n:1,d:2},{k:"trap",l:"xPoint",n:1,d:2}]
-    : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"andreas_real",l:"Point",n:1,d:2},{k:"andreas",l:"xPoint",n:1,d:2}];
-  const sort = SORT[isTrap ? "trap" : "andreas"];
+  $("#teamsTitle").textContent = (isTrap ? "Trap" : "Andreas") +
+    (single ? " — point i dette scenarie" : " — hold-xPoint");
+  $("#teamsNote").textContent = single
+    ? "Point hvert hold ville give i netop dette scenarie (tryk 🎲 for et nyt). Vælg 📊 Forventet for gennemsnittet over alle simuleringer."
+    : (isTrap
+        ? "Trap-scoring. Pot = seedningslag. Point = realiserede point indtil nu · xPoint = forventede slutpoint. Klik på en kolonne for at sortere; filtrér på pot."
+        : "Andreas-scoring. Pris = budgetomkostning. Point = realiserede point indtil nu · xPoint = forventede slutpoint. Klik på en kolonne for at sortere.");
+
   let rows = LAST.teams.slice();
   if(isTrap && TRAP_POT !== "all") rows = rows.filter(r => String(r.pot) === TRAP_POT);
+
+  let cols, sort, clickable;
+  if(single){
+    const sc = SAMPLE.team[metric] || {};
+    rows = rows.map(r => ({...r, scen: sc[r.team] ?? 0}));
+    cols = isTrap
+      ? [{k:"team",l:"Hold"},{k:"pot",l:"Pot",n:1},{k:"scen",l:"Point",n:1,d:2}]
+      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"scen",l:"Point",n:1,d:2}];
+    rows.sort((a,b)=>b.scen-a.scen);
+    sort = {col:"scen", dir:-1}; clickable = false;
+  } else {
+    cols = isTrap
+      ? [{k:"team",l:"Hold"},{k:"pot",l:"Pot",n:1},{k:"trap_real",l:"Point",n:1,d:2},{k:"trap",l:"xPoint",n:1,d:2}]
+      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"andreas_real",l:"Point",n:1,d:2},{k:"andreas",l:"xPoint",n:1,d:2}];
+    sort = SORT[metric];
+    const {col,dir} = sort;
+    rows.sort((a,b)=>{const x=a[col],y=b[col];
+      return typeof x==="string" ? da(x).localeCompare(da(y),"da")*dir : ((x??-Infinity)-(y??-Infinity))*dir;});
+    clickable = true;
+  }
+
   const {col,dir} = sort;
-  rows.sort((a,b)=>{const x=a[col],y=b[col];
-    return typeof x==="string" ? da(x).localeCompare(da(y),"da")*dir : ((x??-Infinity)-(y??-Infinity))*dir;});
   const head=`<thead><tr><th>#</th>${cols.map(c=>{
     const on=col===c.k, arrow=on?(dir<0?" ▼":" ▲"):"";
-    return `<th class="sortable${c.n?' n':''}${on?' sortcol':''}" data-col="${c.k}">${c.l}${arrow}</th>`;
+    return `<th class="${clickable?'sortable ':''}${c.n?'n':''}${on?' sortcol':''}" data-col="${c.k}">${c.l}${arrow}</th>`;
   }).join("")}</tr></thead>`;
   const body=rows.map((r,i)=>`<tr><td>${i+1}</td>${
     cols.map(c=>`<td class="${c.n?'n':''}">${cell(r,c)}</td>`).join("")}</tr>`).join("");
   const t=$("#teamTbl"); t.innerHTML=head+"<tbody>"+body+"</tbody>";
-  t.querySelectorAll("th.sortable").forEach(th=>th.onclick=()=>{
-    const c=th.dataset.col;
-    if(sort.col===c) sort.dir*=-1; else { sort.col=c; sort.dir=c==="team"?1:-1; }
-    renderTeams();
-  });
+  if(clickable){
+    t.querySelectorAll("th.sortable").forEach(th=>th.onclick=()=>{
+      const c=th.dataset.col;
+      if(sort.col===c) sort.dir*=-1; else { sort.col=c; sort.dir=c==="team"?1:-1; }
+      renderTeams();
+    });
+  }
 }
 
 // events
-$("#run").addEventListener("click", run);
-$("#n").addEventListener("keydown", e => { if(e.key==="Enter") run(); });
-document.querySelectorAll(".preset").forEach(p =>
-  p.addEventListener("click", () => { $("#n").value = p.dataset.n; run(); }));
+document.querySelectorAll(".modebtn").forEach(b =>
+  b.addEventListener("click", () => {
+    if(b.dataset.mode === "single") reroll();   // clicking single (re-)rolls a scenario
+    MODE = b.dataset.mode;
+    document.querySelectorAll(".modebtn").forEach(x => x.classList.toggle("active", x.dataset.mode === MODE));
+    render();
+  }));
 document.querySelectorAll(".tab").forEach(t =>
   t.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
@@ -511,7 +553,7 @@ function setComp(c){
   COMP = c === "andreas" ? "andreas" : "trap";
   const u = new URL(location); u.searchParams.set("comp", COMP); history.replaceState(null, "", u);
   document.querySelectorAll(".cbtn").forEach(b => b.classList.toggle("active", b.dataset.comp === COMP));
-  if(LAST){ renderPools(LAST); renderTeams(); }
+  render();
 }
 document.querySelectorAll(".cbtn").forEach(b => b.addEventListener("click", () => setComp(b.dataset.comp)));
 document.querySelectorAll(".cbtn").forEach(b => b.classList.toggle("active", b.dataset.comp === COMP));
@@ -521,7 +563,7 @@ if(COMP_LOCKED) document.querySelector(".compsel").style.display = "none";
 document.querySelectorAll(".psort").forEach(b =>
   b.addEventListener("click", () => {
     document.querySelectorAll(".psort").forEach(x=>x.classList.remove("active"));
-    b.classList.add("active"); POOL_SORT = b.dataset.by; if(LAST) renderPools(LAST);
+    b.classList.add("active"); POOL_SORT = b.dataset.by; render();
   }));
 
 boot();

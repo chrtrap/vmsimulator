@@ -117,7 +117,7 @@ def _pool_sort_key(teams, pts_map, pots=None, gf=None, ga=None):
     return key
 
 
-def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtures, results, nsim=50000, print_results=False, skip_group_stage=False, collect_paths=False, pools=None):
+def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtures, results, nsim=50000, print_results=False, skip_group_stage=False, collect_paths=False, pools=None, n_samples=0):
     timestart = time.time()
     all_teams = [team for group in groups for team in group]
     points_map = {team: (i,j) for i,group in enumerate(groups) for j,team in enumerate(group)}
@@ -154,6 +154,10 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
         pool_agg = {pn: {part: {'pts': 0.0, 'pos': [0] * len(pd['participants'])}
                          for part in pd['participants']}
                     for pn, pd in pools.items()}
+
+    # A subset of full sims kept as "scenarios" for the single-simulation view:
+    # each = {bracket: [...matches...], scores: {pool: {participant: points}}}.
+    samples = []
 
     for _ in range (nsim):
         temp_elo_dict = elo_dict.copy()
@@ -557,6 +561,7 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
                     stage_reach[t][rnd] = stage_reach[t].get(rnd, 0) + 1
             last_bracket = sim_bracket
 
+        sample_scores = {}
         if pools is not None:  # score each participant for THIS simulation, then rank
             sim_a = {t: andreas_points[t] - snap_a[t] for t in andreas_points}
             sim_t = {t: trap_points[t] - snap_t[t] for t in trap_points}
@@ -571,6 +576,15 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
                     name = parts[i][0]
                     pool_agg[pn][name]['pts'] += keys[i][0]
                     pool_agg[pn][name]['pos'][finish] += 1
+                sample_scores[pn] = {parts[i][0]: round(keys[i][0], 2) for i in range(len(parts))}
+
+        # Keep this sim as a replayable scenario (bracket + this-sim points).
+        if collect_paths and len(samples) < n_samples:
+            sample = {'bracket': sim_bracket, 'scores': sample_scores}
+            if pools is not None:   # per-team points earned in THIS scenario
+                sample['team'] = {'andreas': {t: round(sim_a[t], 2) for t in sim_a},
+                                  'trap': {t: round(sim_t[t], 2) for t in sim_t}}
+            samples.append(sample)
 
     if collect_paths or pools is not None:
         extra = {}
@@ -584,6 +598,7 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
             extra['stage_reach'] = stage_reach
             extra['group_pos'] = group_pos
             extra['group_adv'] = group_adv
+            extra['samples'] = samples
         if pools is not None:
             extra['pools'] = pool_agg
         return winners, andreas_points, trap_points, timestart, extra
