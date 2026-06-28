@@ -1,0 +1,13 @@
+round,home,away,reg,et,decider,winner
+# Fill ONE row per knockout match as it is played. Header line above must stay first.
+# round   : R32 | R16 | QF | SF | FINAL | BRONZE   (BRONZE = 3rd-place match, scores no points)
+# home,away: team names exactly as in data/groups.txt (English), e.g. "United States", "Ivory Coast"
+# reg     : 90-minute score as "h-a"  (e.g. 2-1)
+# et      : goals scored in extra time as "h-a" (leave blank if no extra time)
+# decider : FT (won in regulation) | ET (won in extra time) | P (penalty shootout)
+# winner  : the team that advanced  (REQUIRED — for P the reg+et score is a draw)
+#
+# Examples (delete or keep as comments — lines starting with # are ignored):
+#   R32,Mexico,Norway,2-1,,FT,Mexico
+#   R16,Spain,Brazil,1-1,0-0,P,Spain
+#   QF,France,England,1-1,1-0,ET,France

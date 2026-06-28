@@ -1,0 +1,50 @@
+Spain 750
+France 700
+England 675
+Brazil 625
+Argentina 625
+Portugal 550
+Germany 550
+Netherlands 425
+Norway 400
+Belgium 375
+Colombia 375
+Japan 275
+Morocco 275
+USA 275
+Uruguay 275
+Croatia 250
+Mexico 250
+Switzerland 250
+Turkey 250
+Senegal 200
+Ecuador 200
+Sweden 175
+Canada 150
+Austria 150
+Paraguay 150
+Scotland 100
+Bosnia and Herzegovina 100
+Egypt 75
+Ivory Coast 75
+Czechia 75
+Ghana 75
+Algeria 75
+Australia 75
+South Korea 75
+Iran 75
+Tunisia 75
+DR Congo 50
+Qatar 50
+Saudi Arabia 50
+South Africa 50
+Panama 50
+New Zealand 25
+Iraq 25
+Uzbekistan 25
+Cape Verde 25
+Curacao 25
+Jordan 25
+Haiti 25
+
+

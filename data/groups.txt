@@ -1,0 +1,72 @@
+Group A:
+  1: Mexico
+  4: Czechia
+  3: South Korea
+  2: South Africa
+
+Group B:
+  1: Canada
+  2: Bosnia and Herzegovina
+  4: Switzerland
+  3: Qatar
+
+Group C:
+  1: Brazil
+  4: Scotland
+  3: Haiti
+  2: Morocco
+
+Group D:
+  2: Paraguay
+  4: Turkey
+  3: Australia
+  1: United States
+
+Group E:
+  4: Ecuador
+  1: Germany
+  3: Ivory Coast
+  2: Curaçao
+
+Group F:
+  1: Netherlands
+  3: Sweden
+  2: Japan
+  4: Tunisia
+
+Group G:
+  1: Belgium
+  3: Iran
+  2: Egypt
+  4: New Zealand
+
+Group H:
+  1: Spain
+  4: Uruguay
+  3: Saudi Arabia
+  2: Cape Verde
+
+Group I:
+  4: Norway
+  1: France
+  2: Senegal
+  3: Iraq
+
+Group J:
+  1: Argentina
+  3: Austria
+  2: Algeria
+  4: Jordan
+
+Group K:
+  4: Colombia
+  1: Portugal
+  3: Uzbekistan
+  2: DR Congo
+
+Group L:
+  1: England
+  2: Croatia
+  4: Panama
+  3: Ghana
+

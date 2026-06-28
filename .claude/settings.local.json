@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk -F'\\\\t' '$8==\"WC\"' 2026_World_Cup_results.tsv)",
+      "Bash(awk -F'\\\\t' '$8==\"WC\"{print $4, $5, $6\"-\"$7, $1\"/\"$2\"/\"$3}' 2026_World_Cup_results.tsv)",
+      "Bash(awk -F'\\\\t' '$6==\"WC\"{print $4,$5}' 2026_World_Cup_fixtures.tsv)",
+      "Bash(awk -F'\\\\t' '$6==\"WC\"' 2026_World_Cup_fixtures.tsv)",
+      "Bash(awk -F'\\\\t' '$6==\"WC\"{print $4\"\\\\t\"$5}' 2026_World_Cup_fixtures.tsv)",
+      "Bash(awk -F'\\\\t' '$8==\"WC\"{print $4\"\\\\t\"$5}' 2026_World_Cup_results.tsv)",
+      "Bash(read a *)",
+      "Read(//tmp/**)",
+      "Bash(awk -F'\\\\t' '$3==\"ES\"||$3==\"AR\"{print $3,$4}' 2026_World_Cup.tsv)",
+      "Bash(awk -F'\\\\t' '$3==\"ES\"||$3==\"AR\"{print $3,$4}' 2026_World_Cup_latest.tsv)",
+      "Bash(awk -F'\\\\t' '\\($4==\"ES\"||$5==\"ES\"\\) && $8==\"WC\"{print $1\"/\"$2\"/\"$3, $4, $5, $6\"-\"$7, \"Helo=\"$10, \"Aelo=\"$11}' 2026_World_Cup_results.tsv)",
+      "Bash(awk -F'\\\\t' '$3==\"ES\"{print $4}' 2026_World_Cup.tsv)",
+      "Bash(awk -F'\\\\t' '\\($4==\"ES\"||$5==\"ES\"\\) && $8==\"WC\"{print $3\"/\"$2, $4\"\\(\"$11\"\\) vs \"$5\"\\(\"$12\"\\)\", $6\"-\"$7}' 2026_World_Cup_results.tsv)",
+      "Bash(awk -F'\\\\t' '\\($4==\"BR\"||$5==\"BR\"\\) && $8==\"WC\"{print $3\"/\"$2, $4\"\\(\"$11\"\\) vs \"$5\"\\(\"$12\"\\)\", $6\"-\"$7}' 2026_World_Cup_results.tsv)",
+      "Bash(awk -F'\\\\t' '$3==\"ES\"||$3==\"AR\"||$3==\"BR\"||$3==\"FR\"||$3==\"DE\"{print $3, $4}' 2026_World_Cup.tsv)",
+      "Bash(awk -F'\\\\t' '$8==\"WC\"{print NF; exit}' 2026_World_Cup_results.tsv)"
+    ]
+  }
+}
