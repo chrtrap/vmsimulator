@@ -278,6 +278,9 @@ const fl = t => (FLAG[t] || "🏳️");
 const da = t => (TEAM_DA[t] || t);
 const ft = t => `${fl(t)} ${da(t)}`;
 const pct = x => x.toFixed(1) + "%";
+// Vinderodds: a still-alive long shot below the 1-decimal resolution reads as "<0.1%"
+// rather than a misleading "0.0%" (which looks like it has no chance at all).
+const oddsPct = x => x < 0.1 ? "<0.1%" : x.toFixed(1) + "%";
 const distColor = (i, k) => `hsl(${(1 - i / Math.max(1, k - 1)) * 140} 60% 48%)`;  // green -> red
 
 async function boot(){
@@ -321,7 +324,7 @@ function render(){
   const top = d.title_odds[0] ? d.title_odds[0].pct : 1;
   $("#odds").innerHTML = d.title_odds.map(r => `
     <div class="row">
-      <div class="top"><span>${ft(r.team)}</span><span class="p">${pct(r.pct)}</span></div>
+      <div class="top"><span>${ft(r.team)}</span><span class="p">${oddsPct(r.pct)}</span></div>
       <div class="track"><div class="fill" style="width:${Math.max(2, r.pct/top*100)}%"></div></div>
     </div>`).join("") || '<div class="note">Ingen vinder registreret.</div>';
 
