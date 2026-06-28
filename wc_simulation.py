@@ -408,7 +408,7 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
                 else:
                     raw_outcome, g_a, g_b, decider = match_simulator.simulate_knockout_match((t1, t2), temp_elo_dict)
                     outcome = team_dict[raw_outcome]
-                match_simulator.update_elo(raw_outcome, (t1, t2), temp_elo_dict)
+                match_simulator.update_elo(raw_outcome, (t1, t2), temp_elo_dict, group_stage=False)
                 if print_results:
                     print(f'{match_num}. {team_a} - {team_b}')
                     print(f'Result: {g_a} - {g_b}')
