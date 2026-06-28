@@ -97,6 +97,22 @@
   .pcard.opt .prank{color:var(--accent)}
   .pwin.bad{color:var(--bad)}
   .chip b{color:var(--accent)} .chip.po b{color:var(--gold)}
+  .chip.elim{opacity:.5}                       /* team out of the tournament: faded */
+  .chip.elim .cn{text-decoration:line-through}
+  .chip.elim b{color:var(--dim)}
+  /* rules */
+  .rmeta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .rstat{flex:1;min-width:150px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+  .rstat .rk{display:block;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+  .rstat .rv{font-size:15px;font-weight:700}
+  .rsec{margin-bottom:16px}
+  .rsec h3{margin:0 0 4px;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+  .rule{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .rule:last-child{border-bottom:none}
+  .rule .rl{font-size:13.5px}
+  .rule .rp{flex:0 0 auto;background:rgba(33,211,162,.15);color:var(--accent);font-weight:700;border-radius:999px;padding:2px 11px;font-size:12.5px;font-variant-numeric:tabular-nums}
+  .rlist{margin:4px 0 0;padding-left:20px;font-size:13.5px} .rlist li{margin:3px 0}
+  .rtext{font-size:13px;color:var(--txt);margin:6px 0 0;line-height:1.45}
   /* groups */
   .ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
   .gcard{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
@@ -172,16 +188,17 @@
 
       <div>
         <div class="tabs">
-          <div class="tab active" data-v="path">Mest sandsynlige vej</div>
+          <div class="tab active" data-v="path">Vejen til titlen</div>
           <div class="tab" data-v="pools">Konkurrence</div>
-          <div class="tab" data-v="teams">Hold-xPoint</div>
+          <div class="tab" data-v="teams">Forventede holdpoint</div>
           <div class="tab" data-v="stages">Runde-odds</div>
           <div class="tab" data-v="groups">Grupper</div>
+          <div class="tab" data-v="rules">Regler</div>
         </div>
 
         <div class="view active" id="v-path">
           <div class="panel">
-            <h2 id="pathTitle">Mest sandsynlige vej</h2>
+            <h2 id="pathTitle">Den mest sandsynlige vej til titlen</h2>
             <div class="bracket" id="bracket"></div>
             <p class="note" id="pathNote"></p>
           </div>
@@ -215,7 +232,7 @@
 
         <div class="view" id="v-teams">
           <div class="panel">
-            <h2 id="teamsTitle">Hold-xPoint</h2>
+            <h2 id="teamsTitle">Forventede holdpoint</h2>
             <div class="tfilter" id="potFilter">
               <span class="flbl">Pot</span>
               <span class="potf active" data-pot="all">Alle</span>
@@ -227,6 +244,13 @@
             </div>
             <div class="scrollx"><table id="teamTbl"></table></div>
             <p class="note" id="teamsNote"></p>
+          </div>
+        </div>
+
+        <div class="view" id="v-rules">
+          <div class="panel">
+            <h2>Sådan gives point</h2>
+            <div id="rules"></div>
           </div>
         </div>
       </div>
@@ -242,7 +266,7 @@ let LAST = null;     // baked data.json payload (stats + scenario pool)
 let MODE = "stats";  // "stats" = baked N-sim view · "single" = one random scenario
 let SAMPLE = null;   // currently shown scenario {bracket, scores}
 
-// Selected competition (drives the Konkurrence + Hold-xPoint views), persisted in the URL.
+// Selected competition (drives the Konkurrence + Forventede holdpoint views), persisted in the URL.
 const params = new URLSearchParams(location.search);
 let COMP = (params.get("comp") || "").toLowerCase() === "andreas" ? "andreas" : "trap";
 const COMP_LOCKED = params.has("comp");   // a comp in the URL locks the view (hides the switcher)
@@ -330,9 +354,9 @@ function render(){
     </div>`).join("") || '<div class="note">Ingen vinder registreret.</div>';
 
   renderBracket(d, sampleBracket);
-  $("#pathTitle").textContent = single ? "Slutspil (ét tilfældigt scenarie)" : "Mest sandsynlige vej";
+  $("#pathTitle").textContent = single ? "En mulig vej til titlen" : "Den mest sandsynlige vej til titlen";
   $("#pathNote").textContent = single
-    ? "Ét muligt forløb fra de simulerede turneringer. Tryk 🎲 igen for et nyt. (Runde-odds, Grupper og Hold-xPoint viser de samlede tal.)"
+    ? "Ét muligt forløb fra de simulerede turneringer. Tryk 🎲 igen for et nyt. (Runde-odds, Grupper og Forventede holdpoint viser de samlede tal.)"
     : "Hver kamp viser holdet, der oftest vandt netop den plads. Bronzekampen vises kun for et enkelt scenarie.";
 
   $("#poolSort").style.display = single ? "none" : "flex";
@@ -340,6 +364,7 @@ function render(){
   renderStages(d);
   renderGroups(d);
   renderTeams();
+  renderRules();
 
   const info = d.realized_info || {};
   $("#status").textContent = single
@@ -415,16 +440,23 @@ function da2(s){
 let POOL_SORT = "real";   // 'real' = current standing, 'xpts' = expected
 function renderPools(d, scenario){
   const order = [capComp()];   // show only the selected competition
-  const tag = (t, isPrice) => isPrice
-    ? `<span class="chip">${ft(t.team)} <b>$${t.price}</b></span>`
-    : `<span class="chip po">${ft(t.team)} <b>P${t.pot}</b></span>`;
+  // Still-alive teams = the title-odds list (already excludes group/KO-eliminated).
+  // Only meaningful for the real tournament, so skip muting in a single scenario.
+  const aliveSet = (!scenario && d.title_odds && d.title_odds.length)
+    ? new Set(d.title_odds.map(r => r.team)) : null;
+  const tag = (t, isPrice) => {
+    const elim = aliveSet && !aliveSet.has(t.team);
+    const val = isPrice ? `$${t.price}` : `P${t.pot}`;
+    return `<span class="chip${isPrice ? "" : " po"}${elim ? " elim" : ""}">`
+      + `${fl(t.team)} <span class="cn">${da(t.team)}</span> <b>${val}</b></span>`;
+  };
   $("#pools").innerHTML = order.filter(k=>d.pools[k]).map(k => {
     const p = d.pools[k];
     const isPrice = p.type === "price";
     if(scenario){                                   // single scenario: this run's standing
       const sc = scenario[k] || {};
       const pr = p.rows.slice().sort((a,b)=>(sc[b.name]||0)-(sc[a.name]||0));
-      return `<div class="panel pool"><h2>${k}-konkurrence · dette scenarie</h2>
+      return `<div class="panel pool"><h2>Stilling · dette scenarie</h2>
         ${pr.map((r,i)=>`<div class="pcard">
           <div class="phead">
             <span class="prank">${i+1}</span>
@@ -446,7 +478,7 @@ function renderPools(d, scenario){
         <div class="chips">${o.teams.map(t=>tag(t,isPrice)).join("")}</div>
       </div>` : "";
     const rows = p.rows.slice().sort((a,b) => POOL_SORT==="real" ? a.real_rank-b.real_rank : b.xpts-a.xpts);
-    return `<div class="panel pool"><h2>${k}-konkurrence · ${p.size} deltagere</h2>
+    return `<div class="panel pool"><h2>Stilling · ${p.size} deltagere</h2>
       ${optCard}
       ${rows.map((r,i)=>{
         const K = r.pos.length;
@@ -508,13 +540,13 @@ function renderTeams(){
   const metric = isTrap ? "trap" : "andreas";
   const single = MODE === "single" && SAMPLE && SAMPLE.team;
   $("#potFilter").style.display = isTrap ? "flex" : "none";
-  $("#teamsTitle").textContent = (isTrap ? "Trap" : "Andreas") +
-    (single ? " — point i dette scenarie" : " — hold-xPoint");
+  $("#teamsTitle").textContent =
+    single ? "Holdpoint i dette scenarie" : "Forventede holdpoint";
   $("#teamsNote").textContent = single
     ? "Point hvert hold ville give i netop dette scenarie (tryk 🎲 for et nyt). Vælg 📊 Forventet for gennemsnittet over alle simuleringer."
     : (isTrap
-        ? "Trap-scoring. Pot = seedningslag. Point = realiserede point indtil nu · xPoint = forventede slutpoint. Klik på en kolonne for at sortere; filtrér på pot."
-        : "Andreas-scoring. Pris = budgetomkostning. Point = realiserede point indtil nu · xPoint = forventede slutpoint. Klik på en kolonne for at sortere.");
+        ? "Pot = seedningslag. Point = realiserede point indtil nu · xPoint = forventede slutpoint. Klik på en kolonne for at sortere; filtrér på pot."
+        : "Pris = budgetomkostning. Point = realiserede point indtil nu · xPoint = forventede slutpoint. Klik på en kolonne for at sortere.");
 
   let rows = LAST.teams.slice();
   if(isTrap && TRAP_POT !== "all") rows = rows.filter(r => String(r.pot) === TRAP_POT);
@@ -554,6 +586,42 @@ function renderTeams(){
       renderTeams();
     });
   }
+}
+
+// Scoring rules for the selected competition (mirrors trap_points / andreas_points).
+function renderRules(){
+  const rule = (l, p) => `<div class="rule"><span class="rl">${l}</span><span class="rp">${p}</span></div>`;
+  const sec = (title, body) => `<div class="rsec"><h3>${title}</h3>${body}</div>`;
+  const stat = (k, v) => `<div class="rstat"><span class="rk">${k}</span><span class="rv">${v}</span></div>`;
+  let html;
+  if(COMP === "trap"){
+    html =
+      `<div class="rmeta">${stat("Antal hold","6 hold")}${stat("Sammensætning","2 hold fra pot 1 og ét fra hver af pot 2, 3, 4 og 5")}</div>`
+      + sec("Gruppespil",
+          rule("Sejr","+3") + rule("Uafgjort","+1") + rule("9 point i gruppen (3 sejre)","+0,5"))
+      + sec("Knockout",
+          rule("Sejr i ordinær tid","+3") + rule("Sejr efter forlænget spilletid","+2")
+          + rule("Sejr i straffesparkskonkurrence","+1,5") + rule("Tab efter forlænget/straffe","+1"))
+      + sec("Bonus", rule("Sejr med mindst 4 måls forskel (inkl. forlænget)","+0,5"))
+      + `<div class="rsec"><h3>Pointlighed</h3><ol class="rlist">`
+        + `<li>Flest point fra hold i pot 5 (derefter pot 4, 3, 2, 1)</li>`
+        + `<li>Flest scorede mål (uden forlænget spilletid)</li>`
+        + `<li>Færrest indkasserede mål (uden forlænget spilletid)</li>`
+        + `<li>Lodtrækning</li></ol></div>`
+      + `<div class="rsec"><h3>Identisk udvælgelse</h3>`
+        + `<p class="rtext">Ved helt ens holdvalg afgøres rækkefølgen af et ekstra "tiebreaker-hold". `
+        + `Point herfra tæller kun ved identisk udvælgelse.</p></div>`;
+  } else {
+    html =
+      `<div class="rmeta">${stat("Antal hold","4 hold")}${stat("Budget","1300")}</div>`
+      + sec("Gruppekampe", rule("Sejr","+3") + rule("Uafgjort","+1") + rule("Nederlag","+0"))
+      + sec("Gruppeplacering (engangsbonus)",
+          rule("Gruppevinder","+5") + rule("Nr. 2","+3") + rule("Nr. 3 der kvalificerer sig","+1"))
+      + sec("Knockout-sejre (kun vinderen)",
+          rule("1/16-finale","+4") + rule("1/8-finale","+5") + rule("Kvartfinale","+6")
+          + rule("Semifinale","+7") + rule("Finale","+10"));
+  }
+  $("#rules").innerHTML = html;
 }
 
 // events
