@@ -34,8 +34,8 @@ team names are stored internally in **English** and translated for display.
 - `server.py` — stdlib HTTP server. `run_simulation(n, n_samples)`, `build_payload(n_stats, n_samples)`,
   cached `/data.json`. Loads `PRICES`, `POTS`, `KNOCKOUT`, and realized points at import.
   The pure-Python `optimal_andreas` / `optimal_trap` replace the old CPLEX solver.
-- `build.py` — writes `site/data.json` + `site/index.html`. Env: `N_STATS` (default 10000),
-  `N_SAMPLES` (default **200**).
+- `build.py` — writes `site/data.json` + `site/index.html`. Env: `N_STATS` (default 10000;
+  **CI sets 100000** in `deploy.yml` for stable odds — build step takes ~2–3 min), `N_SAMPLES` (default **200**).
 - `index.html` — single-page UI (inline CSS/JS), fetches `data.json`.
 - `data/` — `groups.txt`, `prisliste.txt` (Andreas prices), `trap_seeding.txt` (Trap pots, Danish names),
   `knockout.csv` (hand-maintained KO results), `parsed_wc2026_combinations.txt` (3rd-place bracket pairings).

@@ -36,6 +36,8 @@ jobs:
 
       - name: Build site (runs the simulation -> site/data.json + site/index.html)
         run: python build.py
+        env:
+          N_STATS: "100000"   # more sims -> more stable odds (~0.1pp noise). Local default stays 10k.
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
