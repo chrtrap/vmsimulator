@@ -12,6 +12,13 @@ team names are stored internally in **English** and translated for display.
 - **Local dev:** needs pandas+numpy (any Python ≥3.11; code is pandas-3 compatible).
   - `python3 server.py` → http://localhost:8000 (serves `index.html` + a live, cached `/data.json`).
   - or `python3 build.py` then `cd site && python3 -m http.server 8080`.
+  - ⚠️ **Interpreter gotcha (maintainer's Mac):** `python3` resolves to a Python 3.6 framework
+    build the OS **kills on startup** (exit 137). Use **`/usr/local/bin/python3.9`** (has pandas
+    1.3 / numpy 1.26) for every local run/verify. No 3.11+ is installed locally.
+  - **Quick UI preview** (faster than a 10k build): run `server.py` but pre-warm the cache with a
+    small sim, e.g. set `server._PAYLOAD_CACHE = server.build_payload(1500, 150)` before
+    `serve_forever()`. `Handler.do_GET` re-reads `index.html` per request, so HTML/JS edits show on
+    refresh; only **data** changes (e.g. a new `knockout.csv` row) need a restart to rebuild the cache.
 - `site/` is git-ignored (built by CI). `data.json` is ~1 MB (gzips to ~250 KB).
 
 ## Files
@@ -55,7 +62,9 @@ team names are stored internally in **English** and translated for display.
   groups; 3rd-place qualifier bonus only once all 12 groups are done.
 
 ## `data.json` shape (the payload `build.py`/`/data.json` produce)
-`n`, `realized_info` {played, groups_complete, groups_total, knockout_scored}, `champion`,
+`n`, `realized_info` {played (group games only), groups_complete, groups_total, knockout_scored
+(KO games that award points, excl. bronze), ko_played (all played KO games incl. bronze — the
+header shows `played + ko_played` as "kampe spillet")}, `champion`,
 `title_odds`, `andreas_xpts`, `trap_xpts`, `teams` (per team: pot, price, andreas, trap,
 andreas_real, trap_real), `rounds` (consensus bracket; each match may have `realized` {a,b,ga,gb,w,decider}),
 `stage_reach`, `groups`, `pools` {Trap, Andreas} (each: rows with xpts/real/win/last/exp_rank/pos/teams/real_rank/cost-or-pot,
@@ -65,10 +74,20 @@ andreas_real, trap_real), `rounds` (consensus bracket; each match may have `real
 - Mode toggle: **📊 Forventet** (10k aggregate) vs **🎲 Ny tilfældig turnering** (one random scenario from
   `samples`; clicking re-rolls). No N input / no Kør button.
 - Competition switcher Trap/Andreas. URL `?comp=trap` or `?comp=andreas` locks it (hides the switcher) —
-  used to share a fixed view per group.
-- Tabs: **Mest sandsynlige vej** (bracket), **Konkurrence** (pool standings, with Nuværende/Forventet
-  sub-toggle), **Hold-xPoint** (per-team; shows scenario points in single mode), **Runde-odds** (stage reach),
-  **Grupper** (group standings).
+  used to share a fixed view per group. The proper names **Trap/Andreas only appear on this switcher**
+  (owner-only, hidden on locked links); they were stripped from all standings/points/notes so a viewer
+  who only knows one comp never sees the other's name.
+- Tabs: **Vejen til titlen** (bracket; heading is "Den mest sandsynlige vej til titlen" in Forventet,
+  "En mulig vej til titlen" in single), **Konkurrence** (pool standings, with Nuværende/Forventet
+  sub-toggle), **Forventede holdpoint** (per-team; shows scenario points in single mode), **Runde-odds**
+  (stage reach), **Grupper** (group standings), **Regler** (per-comp scoring; `renderRules()` mirrors
+  `trap_points`/`andreas_points` exactly — keep the two in sync if scoring ever changes).
+- **Eliminated-team muting:** in the pool standings, picked teams that are out of the tournament are
+  faded + struck (`.chip.elim`). "Alive" = membership in `d.title_odds` (which server-side already
+  excludes group- and KO-eliminated teams). Only applied in aggregate mode, not single scenarios.
+- **Numbers are formatted Danish:** `dk()` / `dkf(x,n)` (→ `toLocaleString("da-DK")`) give "," decimals
+  and "." thousands (28,0% · 12,50 · 10.000). Use them for any new displayed number; **never** on CSS
+  values (bar `width`, rgba alpha keep ".").
 - Realized (played) KO games are highlighted **✓ Spillet** with the real score (no %) in both the
   consensus path and single scenarios.
 - `TEAM_DA` maps English→Danish names; `FLAG` maps team→emoji; round names → Danish (`ROUND_DA`);
@@ -83,11 +102,20 @@ omits ET/P — that's why this file exists alongside the group `results.tsv`.
 
 ## Conventions
 - Commit messages end with: `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
-- Verify JS changes with `node --check` on the extracted `<script>`; rebuild with `build.py` to confirm.
+- Verify JS changes with `node --check` on the extracted `<script>` (awk the lines between the
+  `<script>`/`</script>` tags out to a temp file); rebuild/verify Python with `/usr/local/bin/python3.9`.
 - Keep code pandas-3 safe (use `.itertuples`, `dict(zip(...))`, label-based access — no positional Series `[0]`).
 
 ## Current state / open items
-- Group stage complete (72/72). `knockout.csv` is empty (the Mexico–Ecuador row was a removed test).
+- Group stage complete (72/72). **Knockout underway:** `knockout.csv` holds the played KO games —
+  currently one row, `R32,Canada,South Africa,1-0,,FT,Canada`. Add a row per game as it's played
+  (that's the whole update loop), commit, push.
+- **Known model characteristic (decided to leave):** the goal model is a bit overconfident vs its own
+  Elo basis — single-match favourite win% runs ~3–4 pts above the Elo expectation, worst at large gaps
+  (e.g. Argentina ~98% vs Cape Verde in R32; Elo says ~95%). Root cause: `match_simulator.py` maps Elo→
+  goals linearly and symmetrically (`λ = 1.35 ± Δ/400`, underdog floored at 0.1), so the goal margin is
+  too steep. The single lever is the **`/400` divisor** (≈`/500` would track Elo closely). Maintainer
+  chose to keep it — the high numbers are mostly the genuinely large Elo gaps, not a bug.
 - CI shows a harmless "Node 20 → 24" deprecation warning; bump action versions in `deploy.yml` eventually.
 - **Euro reuse:** UI wording is tournament-agnostic, but the engine is hardcoded to WC2026's shape
   (12 groups, R32, best-8 thirds, host trio). Reusing for the Euros (24 teams, 6 groups, R16, best-4 thirds)
