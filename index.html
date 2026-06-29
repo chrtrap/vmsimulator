@@ -218,7 +218,7 @@
           <div class="panel">
             <h2>Hvor langt holdene når</h2>
             <div class="scrollx"><table id="stageTbl"></table></div>
-            <p class="note">Sandsynlighed for at et hold når hver runde. 1/16 = når slutspillet.</p>
+            <p class="note">Sandsynlighed for at et hold når hver runde. Allerede afgjorte runder og eliminerede hold vises ikke.</p>
           </div>
         </div>
 
@@ -512,9 +512,15 @@ function renderPools(d, scenario){
 
 function renderStages(d){
   const cols = [["ko","1/16"],["r16","1/8"],["qf","KV"],["sf","SF"],["final","Finale"],["champ","🏆"]];
-  const head = `<thead><tr><th>Hold</th>${cols.map(c=>`<th class="n">${c[1]}</th>`).join("")}</tr></thead>`;
-  const body = d.stage_reach.map(r=>`<tr><td>${ft(r.team)}</td>${
-    cols.map(c=>{const v=r[c[0]];return `<td class="n heat" style="background:rgba(33,211,162,${(v/100*0.55).toFixed(3)})">${dk(v)}</td>`;}).join("")
+  // Only teams still in the tournament (title_odds already drops group/KO-eliminated).
+  const alive = new Set((d.title_odds||[]).map(r=>r.team));
+  const rows = d.stage_reach.filter(r => alive.has(r.team));
+  // Hide already-settled rounds: every surviving team is at 100%, so the column carries
+  // no information. Keep a column only while at least one team is still below 100%.
+  const shown = cols.filter(c => rows.some(r => r[c[0]] < 100));
+  const head = `<thead><tr><th>Hold</th>${shown.map(c=>`<th class="n">${c[1]}</th>`).join("")}</tr></thead>`;
+  const body = rows.map(r=>`<tr><td>${ft(r.team)}</td>${
+    shown.map(c=>{const v=r[c[0]];return `<td class="n heat" style="background:rgba(33,211,162,${(v/100*0.55).toFixed(3)})">${dk(v)}</td>`;}).join("")
   }</tr>`).join("");
   $("#stageTbl").innerHTML = head + "<tbody>"+body+"</tbody>";
 }

@@ -24,6 +24,17 @@ ROUND_ORDER = ["Round of 32", "Round of 16", "Quarterfinals",
 STAGE_KEYS = [("Round of 32", "ko"), ("Round of 16", "r16"), ("Quarterfinals", "qf"),
               ("Semifinals", "sf"), ("Final", "final"), ("Champion", "champ")]
 
+# Bracket wiring: each knockout slot -> the two slots whose winners meet there
+# (mirrors r16_matches/qf_matches/... in wc_simulation.py). R32 slots (73-88) are
+# roots with fixed matchups; the consensus bracket propagates winners up this tree.
+SLOT_FEEDERS = {
+    89: (74, 77), 90: (73, 75), 91: (76, 78), 92: (79, 80),
+    93: (83, 84), 94: (81, 82), 95: (86, 88), 96: (85, 87),
+    97: (89, 90), 98: (93, 94), 99: (91, 92), 100: (95, 96),
+    101: (97, 98), 102: (99, 100),
+    104: (101, 102),
+}
+
 # The two fantasy competitions and how each is scored.
 POOLS = {
     "Trap":    {"metric": "trap",    "participants": wc.TRAP_OPTIONS},
@@ -171,25 +182,52 @@ def run_simulation(n, n_samples=0):
                 "w": ko["winner"], "decider": _DEC.get(ko["decider"], "FT"),
             }
 
+    # Build ONE internally-consistent consensus bracket by propagating each slot's
+    # most-likely winner forward. Aggregating every slot independently (the old way)
+    # produced incoherent brackets: a slot's header matchup could differ from its own
+    # two rows, the same pair could appear in two rounds it can't span (e.g. Spain vs
+    # Portugal in both R16 and QF), and a slot's favourite need not be who shows up in
+    # the next round. Here each round's matchup is the previous round's consensus winners.
+    def _mc_pair(num):  # most-common (a, b) matchup recorded at a slot
+        mu = slot_matchup.get(num, {})
+        if not mu:
+            return ("", "")
+        parts = max(mu.items(), key=lambda kv: kv[1])[0].split(" vs ")
+        return (parts[0], parts[1]) if len(parts) == 2 else ("", "")
+
+    cons_pair = {}   # slot num -> (a, b) the consensus bracket shows there
+    cons_win = {}    # slot num -> winner carried forward to the next round
+    for num in sorted(slot_meta):           # ascending => R32 roots first, then each round
+        if num in SLOT_FEEDERS:             # matchup = winners of the two feeding slots
+            f1, f2 = SLOT_FEEDERS[num]
+            a, b = cons_win.get(f1, ""), cons_win.get(f2, "")
+        else:                               # R32 root / consolation: real (fixed) matchup
+            a, b = _mc_pair(num)
+        cons_pair[num] = (a, b)
+        wins = slot_winner.get(num, {})
+        cons_win[num] = a if wins.get(a, 0) >= wins.get(b, 0) else b
+
     rounds = []
     for rname in ROUND_ORDER:
         matches = []
         for num in sorted(k for k, r in slot_meta.items() if r == rname):
             wins = slot_winner.get(num, {})
             total = sum(wins.values()) or 1
-            ranked = sorted(wins.items(), key=lambda kv: kv[1], reverse=True)
+            a, b = cons_pair[num]
+            first, second = (a, b) if cons_win[num] == a else (b, a)  # favourite first
             mu = slot_matchup.get(num, {})
             mu_total = sum(mu.values()) or 1
-            top_mu = max(mu.items(), key=lambda kv: kv[1]) if mu else ("", 0)
-            parts = top_mu[0].split(" vs ") if top_mu[0] else []
-            realized = ko_real.get((frozenset(parts), rname)) if len(parts) == 2 else None
+            pair = {a, b}                   # probability THIS exact pairing actually occurs
+            mu_count = sum(c for k, c in mu.items() if set(k.split(" vs ")) == pair)
+            realized = ko_real.get((frozenset((a, b)), rname)) if a and b else None
             matches.append({
                 "num": num,
-                "fav": ranked[0][0] if ranked else "",
-                "fav_pct": round(ranked[0][1] / total * 100, 1) if ranked else 0,
-                "matchup": top_mu[0],
-                "matchup_pct": round(top_mu[1] / mu_total * 100, 1),
-                "winners": [{"team": t, "pct": round(c / total * 100, 1)} for t, c in ranked],
+                "fav": first,
+                "fav_pct": round(wins.get(first, 0) / total * 100, 1),
+                "matchup": f"{first} vs {second}" if first and second else "",
+                "matchup_pct": round(mu_count / mu_total * 100, 1),
+                "winners": [{"team": t, "pct": round(wins.get(t, 0) / total * 100, 1)}
+                            for t in (first, second) if t],
                 "realized": realized,
             })
         if matches:
