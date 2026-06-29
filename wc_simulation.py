@@ -167,10 +167,14 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
 
     # Per-competition standings: pool -> participant -> {pts, pos:[counts by finish]}
     pool_agg = None
+    h2h_agg = None   # pool -> {names, mat}: mat[i][j] = sims where i finished above j
     if pools is not None:
         pool_agg = {pn: {part: {'pts': 0.0, 'pos': [0] * len(pd['participants'])}
                          for part in pd['participants']}
                     for pn, pd in pools.items()}
+        h2h_agg = {pn: {'names': list(pd['participants'].keys()),
+                        'mat': [[0] * len(pd['participants']) for _ in pd['participants']]}
+                   for pn, pd in pools.items()}
 
     # A subset of full sims kept as "scenarios" for the single-simulation view:
     # each = {bracket: [...matches...], scores: {pool: {participant: points}}}.
@@ -600,6 +604,11 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
                     name = parts[i][0]
                     pool_agg[pn][name]['pts'] += keys[i][0]
                     pool_agg[pn][name]['pos'][finish] += 1
+                mat = h2h_agg[pn]['mat']   # order is best->worst, so earlier beats later
+                for a in range(len(order)):
+                    rowa = mat[order[a]]
+                    for b in range(a + 1, len(order)):
+                        rowa[order[b]] += 1
                 sample_scores[pn] = {parts[i][0]: round(keys[i][0], 2) for i in range(len(parts))}
 
         # Keep this sim as a replayable scenario (bracket + this-sim points).
@@ -625,6 +634,7 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
             extra['samples'] = samples
         if pools is not None:
             extra['pools'] = pool_agg
+            extra['h2h'] = h2h_agg
         return winners, andreas_points, trap_points, timestart, extra
     return winners, andreas_points, trap_points, timestart
 

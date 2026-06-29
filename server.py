@@ -327,6 +327,16 @@ def run_simulation(n, n_samples=0):
             "rows": rows,
         }
 
+    # Head-to-head: per pool, P(row participant finishes above column participant), over all sims.
+    h2h = {}
+    for pn, hd in (extra.get("h2h") or {}).items():
+        names, mat = hd["names"], hd["mat"]
+        h2h[pn] = {
+            "names": names,
+            "pct": [[round(mat[i][j] / n * 100, 1) for j in range(len(names))]
+                    for i in range(len(names))],
+        }
+
     return {
         "n": n,
         "elapsed": round(elapsed, 2),
@@ -340,6 +350,7 @@ def run_simulation(n, n_samples=0):
         "stage_reach": stage_reach,
         "groups": group_tables,
         "pools": pools_out,
+        "h2h": h2h,
         # Scenarios drawn from THIS run: {bracket, scores:{pool:{participant:pts}}}.
         "samples": extra.get("samples", []),
     }

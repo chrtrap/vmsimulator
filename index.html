@@ -128,9 +128,27 @@
   .potf{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer}
   .potf:hover{color:var(--txt)}
   .potf.active{color:var(--txt);border-color:var(--accent);background:#16241f}
-  .psort{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 13px;font-size:12.5px;cursor:pointer}
-  .psort:hover{color:var(--txt)}
-  .psort.active{color:var(--txt);border-color:var(--accent);background:#16241f}
+  .psort,.pview,.cbasis{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 13px;font-size:12.5px;cursor:pointer}
+  .psort:hover,.pview:hover,.cbasis:hover{color:var(--txt)}
+  .psort.active,.pview.active,.cbasis.active{color:var(--txt);border-color:var(--accent);background:#16241f}
+  /* Placement matrix: "–" = provably impossible placement. */
+  td.n.imp{color:#39414b;background:#0b0e12;font-weight:400}
+  /* Head-to-head grid + team-contribution bars in the Konkurrence analysis view. */
+  th.hh{text-align:right}
+  td.hhd{color:var(--dim);text-align:center}
+  td.heat.faint{color:var(--dim);font-weight:400}
+  .rval{font-size:12px;color:var(--txt);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .contribwrap{display:flex;flex-direction:column;gap:11px}
+  .cb{display:grid;grid-template-columns:120px 1fr 54px;align-items:center;gap:11px}
+  .cb .cbname{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cbmid{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .cb .cbtrack{background:var(--bar);border-radius:6px;height:20px;overflow:hidden}
+  .cb .cbbar{display:flex;height:100%}
+  .cb .cbseg{display:block;height:100%;min-width:0}
+  .cbchips{display:flex;flex-wrap:wrap;gap:3px 10px;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .cbchip{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  .cbdot{width:8px;height:8px;border-radius:2px;flex:none}
+  .cbpot{color:var(--dim);font-size:10px;font-weight:600}
   th.sortable{cursor:pointer;user-select:none}
   th.sortable:hover{color:var(--txt)}
   th.sortcol{color:var(--accent)}
@@ -188,35 +206,63 @@
 
       <div>
         <div class="tabs">
-          <div class="tab active" data-v="path">Vejen til titlen</div>
-          <div class="tab" data-v="pools">Konkurrence</div>
-          <div class="tab" data-v="teams">Forventede holdpoint</div>
-          <div class="tab" data-v="stages">Runde-odds</div>
+          <div class="tab active" data-v="pools">Konkurrence</div>
+          <div class="tab" data-v="path">Vejen til finalen</div>
+          <div class="tab" data-v="stages">Slutspilsodds</div>
           <div class="tab" data-v="groups">Grupper</div>
-          <div class="tab" data-v="rules">Regler</div>
         </div>
 
-        <div class="view active" id="v-path">
+        <div class="view" id="v-path">
           <div class="panel">
-            <h2 id="pathTitle">Den mest sandsynlige vej til titlen</h2>
+            <h2 id="pathTitle">Den mest sandsynlige vej til finalen</h2>
             <div class="bracket" id="bracket"></div>
             <p class="note" id="pathNote"></p>
           </div>
         </div>
 
-        <div class="view" id="v-pools">
+        <div class="view active" id="v-pools">
+          <div class="tfilter" id="poolView">
+            <span class="flbl">Visning</span>
+            <span class="pview active" data-view="table">Stilling</span>
+            <span class="pview" data-view="matrix">Analyse</span>
+            <span class="pview" data-view="teams">Holdpoint</span>
+            <span class="pview" data-view="rules">Regler</span>
+          </div>
           <div class="tfilter" id="poolSort">
-            <span class="flbl">Stilling</span>
+            <span class="flbl">Point</span>
             <span class="psort active" data-by="real">Nuværende</span>
             <span class="psort" data-by="xpts">Forventet</span>
           </div>
+          <div class="tfilter" id="potFilter" style="display:none">
+            <span class="flbl">Pot</span>
+            <span class="potf active" data-pot="all">Alle</span>
+            <span class="potf" data-pot="1">1</span>
+            <span class="potf" data-pot="2">2</span>
+            <span class="potf" data-pot="3">3</span>
+            <span class="potf" data-pot="4">4</span>
+            <span class="potf" data-pot="5">5</span>
+          </div>
           <div id="pools"></div>
-          <p class="note"><b>Nuværende</b> = realiserede point fra spillede kampe. <b>Forventet</b> = simulerede slutpoint (xPoint). ★ Optimalt hold = højest mulige forventede hold lige nu.</p>
+          <div id="poolMatrix" style="display:none"></div>
+          <div id="poolTeams" style="display:none">
+            <div class="panel">
+              <h2 id="teamsTitle">Forventede holdpoint</h2>
+              <div class="scrollx"><table id="teamTbl"></table></div>
+              <p class="note" id="teamsNote"></p>
+            </div>
+          </div>
+          <div id="poolRules" style="display:none">
+            <div class="panel">
+              <h2>Sådan gives point</h2>
+              <div id="rules"></div>
+            </div>
+          </div>
+          <p class="note" id="poolNote"><b>Nuværende</b> = realiserede point fra spillede kampe. <b>Forventet</b> = simulerede slutpoint (xPoint). ★ Optimalt hold = højest mulige forventede hold lige nu.</p>
         </div>
 
         <div class="view" id="v-stages">
           <div class="panel">
-            <h2>Hvor langt holdene når</h2>
+            <h2>Hvor langt holdene når (%)</h2>
             <div class="scrollx"><table id="stageTbl"></table></div>
             <p class="note">Sandsynlighed for at et hold når hver runde. Allerede afgjorte runder og eliminerede hold vises ikke.</p>
           </div>
@@ -230,29 +276,6 @@
           </div>
         </div>
 
-        <div class="view" id="v-teams">
-          <div class="panel">
-            <h2 id="teamsTitle">Forventede holdpoint</h2>
-            <div class="tfilter" id="potFilter">
-              <span class="flbl">Pot</span>
-              <span class="potf active" data-pot="all">Alle</span>
-              <span class="potf" data-pot="1">1</span>
-              <span class="potf" data-pot="2">2</span>
-              <span class="potf" data-pot="3">3</span>
-              <span class="potf" data-pot="4">4</span>
-              <span class="potf" data-pot="5">5</span>
-            </div>
-            <div class="scrollx"><table id="teamTbl"></table></div>
-            <p class="note" id="teamsNote"></p>
-          </div>
-        </div>
-
-        <div class="view" id="v-rules">
-          <div class="panel">
-            <h2>Sådan gives point</h2>
-            <div id="rules"></div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -314,6 +337,10 @@ const pdec = expected => (COMP === "andreas" && !expected) ? 0 : 2;
 // rather than a misleading "0,0%" (which looks like it has no chance at all).
 const oddsPct = x => x < 0.1 ? "<0,1%" : pct(x);
 const distColor = (i, k) => `hsl(${(1 - i / Math.max(1, k - 1)) * 140} 60% 48%)`;  // green -> red
+const abbr = nm => String(nm).slice(0, 3);                       // short column label in the h2h grid
+const segColor = (i, n) => `hsl(${Math.round(i * 360 / Math.max(1, n))} 55% 52%)`;  // distinct per pick
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");  // safe in attrs
+const shortName = nm => { const s = String(nm); return s.length <= 14 ? s : s.split(/\s+/)[0]; };   // avoid "…"
 
 async function boot(){
   $("#status").textContent = "Henter data…";
@@ -361,13 +388,30 @@ function render(){
     </div>`).join("") || '<div class="note">Ingen vinder registreret.</div>';
 
   renderBracket(d, sampleBracket);
-  $("#pathTitle").textContent = single ? "En mulig vej til titlen" : "Den mest sandsynlige vej til titlen";
+  $("#pathTitle").textContent = single ? "En mulig vej til finalen" : "Den mest sandsynlige vej til finalen";
   $("#pathNote").textContent = single
-    ? "Ét muligt forløb fra de simulerede turneringer. Tryk 🎲 igen for et nyt. (Runde-odds, Grupper og Forventede holdpoint viser de samlede tal.)"
+    ? "Ét muligt forløb fra de simulerede turneringer. Tryk 🎲 igen for et nyt. (Slutspilsodds, Grupper og Holdpoint viser de samlede tal.)"
     : "Hver kamp viser holdet, der oftest vandt netop den plads. Bronzekampen vises kun for et enkelt scenarie.";
 
-  $("#poolSort").style.display = single ? "none" : "flex";
-  renderPools(d, scenario);
+  // Konkurrence holds four sub-views: Stilling (standings), Analyse (matrix/h2h/contribution),
+  // Holdpoint (per-team points) and Regler (scoring). Analyse is aggregate-only, so it falls
+  // back to the standings in single-scenario mode.
+  let pv = POOL_VIEW;
+  if(single && pv === "matrix") pv = "table";
+  // Analyse (matrix/h2h) is aggregate-only — hide its button in single mode, and keep the
+  // toggle highlight on whichever sub-view is actually shown.
+  document.querySelectorAll("#poolView .pview").forEach(b => {
+    b.style.display = (b.dataset.view === "matrix" && single) ? "none" : "";
+    b.classList.toggle("active", b.dataset.view === pv);
+  });
+  $("#poolSort").style.display   = (pv === "table" && !single) ? "flex" : "none";
+  $("#potFilter").style.display  = (pv === "teams" && COMP === "trap") ? "flex" : "none";
+  $("#pools").style.display      = (pv === "table") ? "" : "none";
+  $("#poolMatrix").style.display = (pv === "matrix") ? "" : "none";
+  $("#poolTeams").style.display  = (pv === "teams") ? "" : "none";
+  $("#poolRules").style.display  = (pv === "rules") ? "" : "none";
+  $("#poolNote").style.display   = (pv === "table") ? "" : "none";
+  if(pv === "matrix") renderInsights(d); else renderPools(d, scenario);
   renderStages(d);
   renderGroups(d);
   renderTeams();
@@ -510,6 +554,112 @@ function renderPools(d, scenario){
   }).join("");
 }
 
+let POOL_VIEW = "table";    // 'table' = standings, 'matrix' = analysis (matrix/h2h/contribution)
+let CONTRIB_BASIS = "real"; // Holdbidrag basis: 'real' = realized points, 'xpts' = expected
+// Konkurrence analysis view: placement matrix, head-to-head grid, team contribution. All aggregate.
+function renderInsights(d){
+  const k = capComp();
+  const p = d.pools[k];
+  if(!p){ $("#poolMatrix").innerHTML = ""; return; }
+  const rows = p.rows.slice().sort((a,b) => a.exp_rank - b.exp_rank);   // best expected finish first
+  const order = rows.map(r => r.name);
+  const K = rows.length ? rows[0].pos.length : 0;
+
+  // Provable impossibilities via squad domination. After cancelling the teams two entries
+  // share, A beats B in EVERY remaining scenario if A's leftover picks' guaranteed minimum
+  // (realized so far — points never drop) exceeds B's leftover best case (realized + the most
+  // an alive team can still earn; eliminated teams are frozen). Re-derived from live realized
+  // points each load, so more squads get locked out of placements as teams are knocked out.
+  const rv = {}; (d.teams||[]).forEach(t => rv[t.team] = (COMP==="andreas" ? t.andreas_real : t.trap_real) || 0);
+  const aliveSet = new Set((d.title_odds||[]).map(r => r.team));
+  const BONUS = COMP==="andreas" ? 32 : 18;   // upper bound on points an alive pick can still earn
+  const picks = {}; rows.forEach(r => picks[r.name] = r.teams.map(t => t.team));
+  const dominates = (a,b) => {                 // a's total > b's total in every remaining scenario?
+    const sA = new Set(picks[a]), sB = new Set(picks[b]);
+    const aMin = picks[a].filter(t=>!sB.has(t)).reduce((s,t)=>s + (rv[t]||0), 0);
+    const bMax = picks[b].filter(t=>!sA.has(t)).reduce((s,t)=>s + (rv[t]||0) + (aliveSet.has(t)?BONUS:0), 0);
+    return aMin > bMax;
+  };
+  const bound = {};   // name -> {best, worst}: ranks still reachable (1-based, inclusive)
+  rows.forEach(x=>{
+    let above=0, below=0;
+    rows.forEach(y=>{ if(y.name!==x.name){ if(dominates(y.name,x.name)) above++; if(dominates(x.name,y.name)) below++; }});
+    bound[x.name] = {best: above+1, worst: rows.length - below};
+  });
+
+  // --- 1) Placement matrix (participant × finishing rank) ---
+  const mhead = `<thead><tr><th>Deltager</th>${
+    Array.from({length:K}, (_,j)=>`<th class="n">${j+1}.</th>`).join("")}</tr></thead>`;
+  const mbody = rows.map(r=>{
+    const b = bound[r.name];
+    return `<tr><td title="${esc(r.name)}">${shortName(r.name)}</td>${r.pos.map((v,j)=>{
+      if(j+1 < b.best || j+1 > b.worst)
+        return `<td class="n imp" title="Umuligt — kan ikke nå denne placering">–</td>`;
+      const a = (v/100*0.6).toFixed(3);
+      const txt = v > 0 ? dk(v) : "&lt;0,1";   // 0 in N sims -> rare, but not proven impossible
+      return `<td class="n heat${v>0?'':' faint'}" style="background:rgba(33,211,162,${a})">${txt}</td>`;
+    }).join("")}</tr>`;
+  }).join("");
+  const matrix = `<div class="panel"><h2>Placeringsmatrix · chance for hver slutplacering (%)</h2>
+    <div class="scrollx"><table>${mhead}<tbody>${mbody}</tbody></table></div>
+    <p class="note">Hver række summerer til 100%. Grønnere = mere sandsynligt. <b>–</b> = umuligt.</p></div>`;
+
+  // --- 2) Head-to-head: P(row participant finishes above column participant) ---
+  let h2h = "";
+  const H = d.h2h && d.h2h[k];
+  if(H){
+    const idx = {}; H.names.forEach((nm,i)=>idx[nm]=i);
+    const ord = order.map(nm => idx[nm]);   // display in expected-finish order
+    const hhead = `<thead><tr><th></th>${order.map(nm=>`<th class="n hh" title="${esc(nm)}">${abbr(nm)}</th>`).join("")}</tr></thead>`;
+    const hbody = ord.map((ri,r)=>`<tr><td title="${esc(order[r])}">${shortName(order[r])}</td>${ord.map((ci,c)=>{
+      if(ri===ci) return `<td class="n hhd">–</td>`;
+      const v = H.pct[ri][ci];
+      const bg = v>=50 ? `rgba(33,211,162,${((v-50)/50*0.6).toFixed(3)})`
+                       : `rgba(229,115,115,${((50-v)/50*0.45).toFixed(3)})`;
+      return `<td class="n heat" style="background:${bg}">${dk(v)}</td>`;
+    }).join("")}</tr>`).join("");
+    h2h = `<div class="panel"><h2>Indbyrdes · chance for at slutte over modstanderen (%)</h2>
+      <div class="scrollx"><table>${hhead}<tbody>${hbody}</tbody></table></div>
+      <p class="note">Læs rækken: hvor ofte deltageren slutter <b>over</b> hver af de andre. Grøn = favorit, rød = underdog. Over ${dk(d.n)} simuleringer.</p></div>`;
+  }
+
+  // --- 3) Team contribution (realized or expected, toggleable) ---
+  const cbReal = CONTRIB_BASIS === "real";
+  const cdec = cbReal ? pdec(false) : pdec(true);
+  const unit = cbReal ? "point" : "xPoint";
+  const isPot = p.type === "pot";   // Trap squads share the same pot make-up (2·P1, P2..P5)
+  const tv = {}; (d.teams||[]).forEach(t => tv[t.team] =
+    (COMP==="andreas" ? (cbReal?t.andreas_real:t.andreas) : (cbReal?t.trap_real:t.trap)) || 0);
+  const crows = rows.map(r=>{
+    const segs = r.teams.map(t=>({team:t.team, val: tv[t.team]||0, pot: t.pot}));
+    // Trap: order by pot (1->5, left to right) so the same pot lines up across squads;
+    // Andreas (no pots) by contribution size.
+    segs.sort(isPot ? (a,b)=>(a.pot-b.pot)||(b.val-a.val) : (a,b)=>b.val-a.val);
+    return {name:r.name, total: segs.reduce((s,x)=>s+x.val,0), segs};
+  }).sort((a,b) => b.total - a.total);   // rank bars by their own (realized/expected) total
+  const gmax = Math.max(1, ...crows.map(r=>r.total));
+  const contrib = `<div class="panel"><h2>Holdbidrag · ${cbReal?'realiserede':'forventede'} point pr. valgt hold</h2>
+    <div class="tfilter" style="margin:-2px 0 11px"><span class="flbl">Point</span>
+      <span class="cbasis${cbReal?' active':''}" data-basis="real">Nuværende</span>
+      <span class="cbasis${cbReal?'':' active'}" data-basis="xpts">Forventet</span></div>
+    <div class="contribwrap">${crows.map(r=>`
+      <div class="cb">
+        <span class="cbname" title="${esc(r.name)}">${shortName(r.name)}</span>
+        <div class="cbmid">
+          <div class="cbtrack"><div class="cbbar" style="width:${(r.total/gmax*100).toFixed(1)}%">${
+            r.segs.map((s,i)=>`<span class="cbseg" style="width:${(r.total>0?s.val/r.total*100:0).toFixed(1)}%;background:${segColor(i,r.segs.length)}" title="${esc(da(s.team))}: ${dkf(s.val,cdec)} ${unit}"></span>`).join("")}</div></div>
+          <div class="cbchips">${r.segs.map((s,i)=>`<span class="cbchip" title="${esc(da(s.team))}"><span class="cbdot" style="background:${segColor(i,r.segs.length)}"></span>${isPot?`<span class="cbpot">P${s.pot}</span> `:""}${fl(s.team)} ${dkf(s.val,cdec)}</span>`).join("")}</div>
+        </div>
+        <span class="rval">${dkf(r.total,cdec)}</span>
+      </div>`).join("")}
+    </div>
+    <p class="note">Bjælkens længde = ${cbReal?'realiserede':'forventede'} slutpoint i alt; chips = hvert holds bidrag (farven matcher bjælken)${isPot?', sorteret efter pulje (P1→P5)':''}.</p></div>`;
+
+  $("#poolMatrix").innerHTML = matrix + h2h + contrib;
+  $("#poolMatrix").querySelectorAll(".cbasis").forEach(b =>
+    b.addEventListener("click", () => { CONTRIB_BASIS = b.dataset.basis; renderInsights(d); }));
+}
+
 function renderStages(d){
   const cols = [["ko","1/16"],["r16","1/8"],["qf","KV"],["sf","SF"],["final","Finale"],["champ","🏆"]];
   // Only teams still in the tournament (title_odds already drops group/KO-eliminated).
@@ -552,7 +702,6 @@ function renderTeams(){
   const isTrap = COMP === "trap";
   const metric = isTrap ? "trap" : "andreas";
   const single = MODE === "single" && SAMPLE && SAMPLE.team;
-  $("#potFilter").style.display = isTrap ? "flex" : "none";
   $("#teamsTitle").textContent =
     single ? "Holdpoint i dette scenarie" : "Forventede holdpoint";
   $("#teamsNote").textContent = single
@@ -673,6 +822,12 @@ document.querySelectorAll(".psort").forEach(b =>
   b.addEventListener("click", () => {
     document.querySelectorAll(".psort").forEach(x=>x.classList.remove("active"));
     b.classList.add("active"); POOL_SORT = b.dataset.by; render();
+  }));
+
+document.querySelectorAll(".pview").forEach(b =>
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".pview").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); POOL_VIEW = b.dataset.view; render();
   }));
 
 boot();
