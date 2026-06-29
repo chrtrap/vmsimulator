@@ -307,6 +307,9 @@ const dk = x => Number(x).toLocaleString("da-DK");                       // natu
 const dkf = (x, n) => Number(x).toLocaleString("da-DK",                  // fixed n decimals
   {minimumFractionDigits: n, maximumFractionDigits: n});
 const pct = x => dkf(x, 1) + "%";
+// Point decimals: Andreas scoring is whole-numbered, so realized/scenario totals show no
+// decimals; xPoints (averages) and all Trap points keep 2. `expected` = is this an xPoint?
+const pdec = expected => (COMP === "andreas" && !expected) ? 0 : 2;
 // Vinderodds: a still-alive long shot below the 1-decimal resolution reads as "<0,1%"
 // rather than a misleading "0,0%" (which looks like it has no chance at all).
 const oddsPct = x => x < 0.1 ? "<0,1%" : pct(x);
@@ -465,7 +468,7 @@ function renderPools(d, scenario){
           <div class="phead">
             <span class="prank">${i+1}</span>
             <span class="pname">${r.name}</span>
-            <span class="pxp">${dkf(sc[r.name]||0, 2)} point</span>
+            <span class="pxp">${dkf(sc[r.name]||0, pdec(false))} point</span>
           </div>
           <div class="chips">${r.teams.map(t=>tag(t,isPrice)).join("")}</div>
         </div>`).join("")}
@@ -476,7 +479,7 @@ function renderPools(d, scenario){
     const optCard = o ? `<div class="pcard opt">
         <div class="phead"><span class="prank">★</span>
           <span class="pname">${useReal ? "Optimalt hold (indtil nu)" : "Optimalt hold (forventet)"}</span>
-          <span class="pxp">${dkf(o.xpts, 2)} ${useReal ? "point" : "xPoint"}</span>
+          <span class="pxp">${dkf(o.xpts, pdec(!useReal))} ${useReal ? "point" : "xPoint"}</span>
           <span class="pwin">${isPrice ? `pris ${o.cost}/${p.budget}` : 'bedst pr. pot'}</span>
         </div>
         <div class="chips">${o.teams.map(t=>tag(t,isPrice)).join("")}</div>
@@ -488,8 +491,8 @@ function renderPools(d, scenario){
         const K = r.pos.length;
         const dist = r.pos.map((v,j)=>`<i style="width:${v}%;background:${distColor(j,K)}" title="${j+1}.: ${dk(v)}%"></i>`).join("");
         const valTxt = isPrice ? `pris ${r.cost}/${p.budget}` : "";
-        const primary = POOL_SORT==="real" ? `${dkf(r.real, 2)} point` : `${dkf(r.xpts, 2)} xPoint`;
-        const second = POOL_SORT==="real" ? `forventet ${dkf(r.xpts, 2)} xPoint` : `nu ${dkf(r.real, 2)} point`;
+        const primary = POOL_SORT==="real" ? `${dkf(r.real, pdec(false))} point` : `${dkf(r.xpts, pdec(true))} xPoint`;
+        const second = POOL_SORT==="real" ? `forventet ${dkf(r.xpts, pdec(true))} xPoint` : `nu ${dkf(r.real, pdec(false))} point`;
         return `<div class="pcard">
           <div class="phead">
             <span class="prank">${i+1}</span>
@@ -561,13 +564,13 @@ function renderTeams(){
     rows = rows.map(r => ({...r, scen: sc[r.team] ?? 0}));
     cols = isTrap
       ? [{k:"team",l:"Hold"},{k:"pot",l:"Pot",n:1},{k:"scen",l:"Point",n:1,d:2}]
-      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"scen",l:"Point",n:1,d:2}];
+      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"scen",l:"Point",n:1,d:0}];
     rows.sort((a,b)=>b.scen-a.scen);
     sort = {col:"scen", dir:-1}; clickable = false;
   } else {
     cols = isTrap
       ? [{k:"team",l:"Hold"},{k:"pot",l:"Pot",n:1},{k:"trap_real",l:"Point",n:1,d:2},{k:"trap",l:"xPoint",n:1,d:2}]
-      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"andreas_real",l:"Point",n:1,d:2},{k:"andreas",l:"xPoint",n:1,d:2}];
+      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"andreas_real",l:"Point",n:1,d:0},{k:"andreas",l:"xPoint",n:1,d:2}];
     sort = SORT[metric];
     const {col,dir} = sort;
     rows.sort((a,b)=>{const x=a[col],y=b[col];
