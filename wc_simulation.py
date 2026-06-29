@@ -759,11 +759,13 @@ def realized_points(groups, elo_dict, team_dict, fixtures, results, knockout=Non
             andreas[groups[gi][ti]] += 1
 
     # --- knockout matches (from knockout.csv) ---
-    ko_scored = 0
+    ko_scored = 0   # KO games that award points (excludes the bronze match)
+    ko_played = 0   # all valid KO games played (incl. bronze) -> total match count
     for ko in (knockout or []):
         h, aw, win = ko['home'], ko['away'], ko['winner']
         if h not in andreas or aw not in andreas or win not in andreas:
             continue  # unknown team name -> skip (data typo)
+        ko_played += 1
         rh, ra = ko['reg']
         gf[h] += rh; ga[h] += ra; gf[aw] += ra; ga[aw] += rh   # regulation goals (tiebreaker)
         if ko['round'] == 'BRONZE':
@@ -782,7 +784,8 @@ def realized_points(groups, elo_dict, team_dict, fixtures, results, knockout=Non
             trap[win] += 0.5
 
     info = {'played': int(sum(pcount)), 'groups_complete': len(complete),
-            'groups_total': len(groups), 'knockout_scored': ko_scored}
+            'groups_total': len(groups), 'knockout_scored': ko_scored,
+            'ko_played': ko_played}
     return andreas, trap, gf, ga, info
 
 
