@@ -799,6 +799,98 @@ def realized_points(groups, elo_dict, team_dict, fixtures, results, knockout=Non
     return andreas, trap, gf, ga, info
 
 
+def group_stage_detail(groups, elo_dict, team_dict, fixtures, results):
+    """Deterministic group-stage tables for display (works mid-stage or complete):
+      - standings: per group, FIFA-ordered rows with P/W/D/L/GF/GA/GD/Pts + rank
+      - results:   each played group game with date + matchday (Spilledag), chronological
+      - thirds:    the 12 third-placed teams ranked for the best-8 cut (once groups are done)
+    Pure function of the results so far (no simulation). Mirrors realized_points' parsing and
+    reuses _order_group, so the ordering matches the rest of the app."""
+    inv_team_dict = {v: k for k, v in team_dict.items()}
+    shape = np.shape(groups)
+    pts, gd, gs, ga_arr = (np.zeros(shape) for _ in range(4))
+    w_arr, d_arr, l_arr, p_arr = (np.zeros(shape, dtype=int) for _ in range(4))
+    points_map = {team: (i, j) for i, g in enumerate(groups) for j, team in enumerate(g)}
+
+    played, current_elo = {}, dict(elo_dict)
+    for _, r in results.sort_values(['Y', 'M', 'D']).iterrows():
+        played[(r['HT'], r['AT'])] = (int(r['GH']), int(r['GA']), int(r['Y']), int(r['M']), int(r['D']))
+        current_elo[r['HT']] = r['H_elo']
+        current_elo[r['AT']] = r['A_elo']
+
+    group_matches, games = {}, []
+    for fix in fixtures.itertuples(index=False, name=None):
+        ht, at = fix[0], fix[1]
+        if (ht, at) in played:
+            g_a, g_b, y, m, dd = played[(ht, at)]
+        elif (at, ht) in played:
+            g_b, g_a, y, m, dd = played[(at, ht)]
+        else:
+            continue  # not played yet
+        a, b = team_dict[ht], team_dict[at]
+        ia, ib = points_map[a], points_map[b]
+        group_matches[(ht, at)] = (g_a, g_b)
+        group_matches[(at, ht)] = (g_b, g_a)
+        gs[ia] += g_a; gs[ib] += g_b
+        ga_arr[ia] += g_b; ga_arr[ib] += g_a
+        gd[ia] += g_a - g_b; gd[ib] += g_b - g_a
+        p_arr[ia] += 1; p_arr[ib] += 1
+        if g_a == g_b:
+            pts[ia] += 1; pts[ib] += 1; d_arr[ia] += 1; d_arr[ib] += 1
+        elif g_a > g_b:
+            pts[ia] += 3; w_arr[ia] += 1; l_arr[ib] += 1
+        else:
+            pts[ib] += 3; w_arr[ib] += 1; l_arr[ia] += 1
+        games.append((ia[0], ht, at, g_a, g_b, y, m, dd))
+
+    # Matchday per group: sort that group's played games by date, chunk into pairs.
+    md, by_group = {}, {}
+    for g in games:
+        by_group.setdefault(g[0], []).append(g)
+    for gi, gl in by_group.items():
+        gl.sort(key=lambda x: (x[5], x[6], x[7]))
+        per_md = max(1, len(groups[gi]) // 2)   # 2 games per matchday in a group of 4
+        for idx, g in enumerate(gl):
+            md[(g[1], g[2])] = idx // per_md + 1
+
+    standings = []
+    for gi, group in enumerate(groups):
+        order = _order_group(gi, group, pts, gd, gs, group_matches, current_elo, inv_team_dict)
+        rank_of = {ti: r + 1 for r, ti in enumerate(order)}
+        rows = [{
+            "team": str(name), "rank": rank_of[ti],
+            "played": int(p_arr[gi, ti]), "w": int(w_arr[gi, ti]),
+            "d": int(d_arr[gi, ti]), "l": int(l_arr[gi, ti]),
+            "gf": int(gs[gi, ti]), "ga": int(ga_arr[gi, ti]),
+            "gd": int(gd[gi, ti]), "pts": int(pts[gi, ti]),
+        } for ti, name in enumerate(group)]
+        rows.sort(key=lambda r: r["rank"])
+        complete = all(p_arr[gi, ti] >= len(group) - 1 for ti in range(len(group)))
+        standings.append({"letter": chr(65 + gi), "complete": bool(complete), "teams": rows})
+
+    results_out = [{
+        "group": chr(65 + g[0]), "matchday": md.get((g[1], g[2]), 0),
+        "date": f"{g[5]:04d}-{g[6]:02d}-{g[7]:02d}", "y": g[5], "m": g[6], "d": g[7],
+        "home": team_dict[g[1]], "away": team_dict[g[2]], "gh": g[3], "ga": g[4],
+    } for g in sorted(games, key=lambda x: (x[5], x[6], x[7], x[0]))]
+
+    thirds = []
+    if all(s["complete"] for s in standings):
+        raw = []
+        for gi, group in enumerate(groups):
+            ti = _order_group(gi, group, pts, gd, gs, group_matches, current_elo, inv_team_dict)[2]
+            key = (pts[gi, ti], gd[gi, ti], gs[gi, ti], current_elo[inv_team_dict[group[ti]]])
+            raw.append((gi, ti, key))
+        raw.sort(key=lambda x: x[2], reverse=True)
+        thirds = [{
+            "team": str(groups[gi][ti]), "group": chr(65 + gi), "rank": rank,
+            "pts": int(pts[gi, ti]), "gd": int(gd[gi, ti]), "gf": int(gs[gi, ti]),
+            "qualified": rank <= 8,
+        } for rank, (gi, ti, _) in enumerate(raw, start=1)]
+
+    return {"standings": standings, "results": results_out, "thirds": thirds}
+
+
 def print_winner_statistics(timestart, winners, nsim):
     # Sort the dictionary by the number of wins in descending order
     sorted_winners = sorted(winners.items(), key=lambda item: item[1], reverse=True)

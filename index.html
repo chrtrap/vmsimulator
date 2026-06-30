@@ -53,14 +53,22 @@
   .tab.active{color:var(--txt);border-color:var(--accent);background:#16241f}
   .view{display:none}
   .view.active{display:block}
-  /* bracket */
-  .bracket{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px}
-  .col{min-width:188px;flex:0 0 auto}
-  .col h3{margin:0 0 8px;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+  /* bracket — a real 16->8->4->2->1 tree: aligned columns + SVG connectors */
+  .bracket{display:flex;overflow-x:auto;overflow-y:visible;padding-bottom:8px;position:relative;align-items:stretch}
+  .bkcol{min-width:194px;flex:0 0 auto;display:flex;flex-direction:column;padding:0 11px;position:relative;z-index:1}
+  .bkcol h3{margin:0 0 10px;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;text-align:center}
+  .bkmatches{height:var(--bkh,720px);display:flex;flex-direction:column;justify-content:space-around}
+  .bksvg{position:absolute;top:0;left:0;pointer-events:none;z-index:0}
+  .bksvg path{fill:none;stroke:#3c4655;stroke-width:1.5}
   .match{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 10px;margin-bottom:9px}
+  .bracket .match{height:76px;box-sizing:border-box;padding:7px 10px;margin:0;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:center}
+  .bracket .match .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .match .mu{font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.25}
+  .bracket .match .mu{margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .team{position:relative;display:flex;justify-content:space-between;align-items:center;
     font-size:13px;padding:3px 7px;gap:6px;border-radius:5px;overflow:hidden}
+  .bracket .match .team{padding:2px 7px}
   .team .barbg{position:absolute;left:0;top:0;bottom:0;background:rgba(33,211,162,.16);z-index:0}
   .team .nm{flex:1;position:relative;z-index:1;line-height:1.2}
   .team.win .nm{color:var(--accent);font-weight:700}
@@ -70,9 +78,6 @@
   .match.final{border-color:var(--accent);box-shadow:0 0 0 1px rgba(33,211,162,.4),0 6px 20px rgba(33,211,162,.13)}
   .match.real{border-color:var(--accent);background:#15231d}
   .match .mu.real{color:var(--accent);font-weight:700;letter-spacing:.3px}
-  .match.third{border-style:dashed;border-color:var(--line);background:transparent;margin-top:16px;opacity:.5}
-  .match.third .thlbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);margin-bottom:5px}
-  .match.third .team.win .nm{color:var(--dim);font-weight:400}
   /* tables */
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -123,30 +128,57 @@
   .gadv{font-variant-numeric:tabular-nums;font-size:11.5px;width:42px;text-align:right}
   .posbar{display:flex;height:6px;width:60px;flex:0 0 60px;border-radius:4px;overflow:hidden;background:var(--bar)}
   .posbar i{display:block;height:100%}
+  /* gruppespil (rebuilt tab) */
+  .gwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+  .gtbl{width:100%;border-collapse:collapse;font-size:12.5px}
+  .gtbl th{color:var(--dim);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.3px;
+    padding:3px 5px;text-align:right;border-bottom:1px solid var(--line)}
+  .gtbl td{padding:5px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+  .gtbl tr:last-child td{border-bottom:none}
+  .gtbl th.l,.gtbl td.l{text-align:left}
+  .gtbl td.nm{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gtbl td.rk{color:var(--dim);width:18px}
+  .gtbl tr.q td.rk{color:var(--accent);font-weight:700}
+  .gtbl td.pts{color:var(--accent);font-weight:700}
+  .gtbl tr.elimr td.nm{color:var(--dim)}
+  .gtbl tr.cutline td{border-bottom:2px solid var(--gold)}
+  .vadv.go{color:var(--accent)} .vadv.no{color:var(--dim)}
+  .gtag{display:inline-block;font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+  .cutnote{font-size:11px;color:var(--gold);margin:6px 0 0}
+  .mdsec{margin-bottom:18px}
+  .mdsec h3{margin:0 0 8px;font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
+  .gres{display:flex;align-items:center;gap:9px;font-size:13px;padding:5px 2px;border-bottom:1px solid var(--line)}
+  .gres:last-child{border-bottom:none}
+  .gres .gdate{color:var(--dim);font-size:11px;width:46px;flex:0 0 46px;font-variant-numeric:tabular-nums}
+  .gres .gh{flex:1;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gres .ga2{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gres .gsc{font-family:ui-monospace,Menlo,monospace;color:var(--gold);flex:0 0 auto;min-width:44px;text-align:center}
+  .gres .gwin{color:var(--accent);font-weight:700}
   .tfilter{display:flex;align-items:center;gap:6px;margin-bottom:11px;flex-wrap:wrap}
   .tfilter .flbl{color:var(--dim);font-size:12px;margin-right:2px}
   .potf{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer}
   .potf:hover{color:var(--txt)}
   .potf.active{color:var(--txt);border-color:var(--accent);background:#16241f}
-  .psort,.pview,.cbasis{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 13px;font-size:12.5px;cursor:pointer}
-  .psort:hover,.pview:hover,.cbasis:hover{color:var(--txt)}
-  .psort.active,.pview.active,.cbasis.active{color:var(--txt);border-color:var(--accent);background:#16241f}
+  .psort,.pview,.cbasis,.gview{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 13px;font-size:12.5px;cursor:pointer}
+  .psort:hover,.pview:hover,.cbasis:hover,.gview:hover{color:var(--txt)}
+  .psort.active,.pview.active,.cbasis.active,.gview.active{color:var(--txt);border-color:var(--accent);background:#16241f}
   /* Placement matrix: "–" = provably impossible placement. */
   td.n.imp{color:#39414b;background:#0b0e12;font-weight:400}
   /* Head-to-head grid + team-contribution bars in the Konkurrence analysis view. */
   th.hh{text-align:right}
   td.hhd{color:var(--dim);text-align:center}
   td.heat.faint{color:var(--dim);font-weight:400}
-  .rval{font-size:12px;color:var(--txt);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
-  .contribwrap{display:flex;flex-direction:column;gap:11px}
-  .cb{display:grid;grid-template-columns:120px 1fr 54px;align-items:center;gap:11px}
-  .cb .cbname{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .cbmid{display:flex;flex-direction:column;gap:4px;min-width:0}
-  .cb .cbtrack{background:var(--bar);border-radius:6px;height:20px;overflow:hidden}
-  .cb .cbbar{display:flex;height:100%}
-  .cb .cbseg{display:block;height:100%;min-width:0}
-  .cbchips{display:flex;flex-wrap:wrap;gap:3px 10px;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
-  .cbchip{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  /* Holdbidrag: vertical stacked columns, bars grow upward from a shared baseline */
+  .contribcols{display:flex;align-items:flex-start;gap:16px;overflow-x:auto;padding-bottom:4px}
+  .ccol{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;min-width:54px}
+  .cplot{height:200px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px}
+  .ctot{font-size:12px;font-weight:600;color:var(--txt);font-variant-numeric:tabular-nums}
+  .cbarv{width:46px;display:flex;flex-direction:column-reverse;border-radius:6px 6px 0 0;overflow:hidden;background:var(--bar)}
+  .cseg{width:100%;min-height:1px}
+  .cname{font-size:12px;font-weight:600;margin-top:8px;text-align:center;max-width:96px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .clegend{display:flex;flex-direction:column;gap:2px;margin-top:7px;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .cleg{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
   .cbdot{width:8px;height:8px;border-radius:2px;flex:none}
   .cbpot{color:var(--dim);font-size:10px;font-weight:600}
   th.sortable{cursor:pointer;user-select:none}
@@ -209,7 +241,7 @@
           <div class="tab active" data-v="pools">Konkurrence</div>
           <div class="tab" data-v="path">Vejen til finalen</div>
           <div class="tab" data-v="stages">Slutspilsodds</div>
-          <div class="tab" data-v="groups">Grupper</div>
+          <div class="tab" data-v="groups">Gruppespil</div>
         </div>
 
         <div class="view" id="v-path">
@@ -269,11 +301,13 @@
         </div>
 
         <div class="view" id="v-groups">
-          <div class="panel">
-            <h2>Gruppestillinger</h2>
-            <div class="ggrid" id="groups"></div>
-            <p class="note">Bjælker viser P(1.·2.·3.·4.). Avancerer% inkluderer bedste-treer-vejen.</p>
+          <div class="tfilter" id="gsView">
+            <span class="flbl">Visning</span>
+            <span class="gview active" data-gview="standings">Stillinger</span>
+            <span class="gview" data-gview="results">Resultater</span>
           </div>
+          <div class="panel" id="gStandings"></div>
+          <div class="panel" id="gResults" style="display:none"></div>
         </div>
 
       </div>
@@ -413,7 +447,7 @@ function render(){
   $("#poolNote").style.display   = (pv === "table") ? "" : "none";
   if(pv === "matrix") renderInsights(d); else renderPools(d, scenario);
   renderStages(d);
-  renderGroups(d);
+  renderGroupsTab(d);
   renderTeams();
   renderRules();
 
@@ -436,19 +470,16 @@ function renderBracket(d, sample){
   }));
   if(sample){
     sample.forEach(m => (byR[m.round] ??= []).push(m));
-    Object.values(byR).forEach(a => a.sort((x,y)=>x.num-y.num));
     cardOf = (m, kind='') => {
       const real = realizedSet.has(realKey(m.round, m.a, m.b));
-      const top = real
-        ? `<div class="mu real">✓ Spillet${m.decider!=="FT" ? " · "+deciderDa(m.decider) : ""}</div>`
-        : (kind==='third' ? '<div class="thlbl">Bronzekamp · tæller ikke</div>' : '');
-      const decBadge = (!real && m.decider!=="FT")
-        ? `<div style="text-align:right"><span class="decider">${deciderDa(m.decider)}</span></div>` : "";
+      let top;
+      if(real)              top = `<div class="mu real">✓ Spillet${m.decider!=="FT" ? " · "+deciderDa(m.decider) : ""}</div>`;
+      else if(kind==='third') top = '<div class="thlbl">Bronzekamp · tæller ikke</div>';
+      else                  top = m.decider!=="FT" ? `<div class="mu">${deciderDa(m.decider)}</div>` : "";
       return `<div class="match${kind?' '+kind:''}${real?' real':''}">
         ${top}
         <div class="team ${m.w===m.a?'win':''}"><span class="nm">${ft(m.a)}</span><span class="score">${m.ga}</span></div>
         <div class="team ${m.w===m.b?'win':''}"><span class="nm">${ft(m.b)}</span><span class="score">${m.gb}</span></div>
-        ${decBadge}
       </div>`;
     };
   } else {
@@ -474,14 +505,58 @@ function renderBracket(d, sample){
       </div>`;
     };
   }
-  // 3rd-place game only in single-sim view (it's mutually exclusive with the Final).
-  const third = (sample && byR["Third Place Match"]) ? byR["Third Place Match"] : [];
-  el.innerHTML = colOrder.filter(r => byR[r] && byR[r].length).map(r => {
+  // Order every round top->bottom by its slot's vertical tree position, so each round's
+  // match j lines up between its two feeders (rounds[r].matches[2j], [2j+1]).
+  const brow = n => (d.bracket_rows && d.bracket_rows[n] != null) ? d.bracket_rows[n] : n;
+  colOrder.forEach(r => { if(byR[r]) byR[r] = byR[r].slice().sort((x,y)=>brow(x.num)-brow(y.num)); });
+
+  const shownCols = colOrder.filter(r => byR[r] && byR[r].length);
+  const nLeaves = (byR["Round of 32"] || []).length || 16;
+  el.style.setProperty("--bkh", (nLeaves * 96) + "px");   // row pitch ≈ card height + gap
+  el.innerHTML = `<svg class="bksvg"></svg>` + shownCols.map(r => {
     const kind = r === "Final" ? 'final' : '';
     const cards = byR[r].map(m => cardOf(m, kind)).join("");
-    const tp = (r === "Final") ? third.map(m => cardOf(m, 'third')).join("") : "";
-    return `<div class="col"><h3>${ROUND_DA[r] || r}</h3>${cards}${tp}</div>`;
+    return `<div class="bkcol"><h3>${ROUND_DA[r] || r}</h3><div class="bkmatches">${cards}</div></div>`;
   }).join("");
+
+  // (The bronze final is intentionally omitted from the bracket — it's a non-counting game,
+  // mutually exclusive with the Final, and had no natural home in the tree.)
+  requestAnimationFrame(() => drawConnectors(el));
+}
+
+// Draw the bracket's connector lines from measured card positions (robust to any card
+// height / horizontal scroll, since the SVG lives inside the scrolling content). Each
+// round-r card connects back to the two round-(r-1) cards that feed it (indices 2j, 2j+1).
+function drawConnectors(el){
+  if(!el) return;
+  const svg = el.querySelector(".bksvg");
+  if(!svg) return;
+  const cols = [...el.querySelectorAll(".bkcol")];
+  const bra = el.getBoundingClientRect();
+  if(!bra.width || cols.length < 2){ svg.innerHTML = ""; return; }   // hidden / not laid out yet
+  const W = el.scrollWidth, H = el.scrollHeight;
+  svg.setAttribute("width", W); svg.setAttribute("height", H);
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const X = (rect, fx) => rect.left - bra.left + el.scrollLeft + fx * rect.width;
+  const Y = (rect, fy) => rect.top  - bra.top  + el.scrollTop  + fy * rect.height;
+  const cardsOf = c => [...c.querySelectorAll(".match")];
+  let paths = "";
+  for(let c = 1; c < cols.length; c++){
+    const kids = cardsOf(cols[c]), par = cardsOf(cols[c-1]);
+    kids.forEach((kid, j) => {
+      const a = par[2*j], b = par[2*j+1];
+      if(!a || !b) return;
+      const kr = kid.getBoundingClientRect();
+      const kx = X(kr, 0), ky = Y(kr, 0.5);          // child left-center
+      [a, b].forEach(p => {
+        const pr = p.getBoundingClientRect();
+        const px = X(pr, 1), py = Y(pr, 0.5);        // feeder right-center
+        const mx = (px + kx) / 2;
+        paths += `<path d="M${px.toFixed(1)} ${py.toFixed(1)} H${mx.toFixed(1)} V${ky.toFixed(1)} H${kx.toFixed(1)}"/>`;
+      });
+    });
+  }
+  svg.innerHTML = paths;
 }
 // translate "Team A vs Team B" matchup strings to Danish names
 function da2(s){
@@ -602,7 +677,7 @@ function renderInsights(d){
   }).join("");
   const matrix = `<div class="panel"><h2>Placeringsmatrix · chance for hver slutplacering (%)</h2>
     <div class="scrollx"><table>${mhead}<tbody>${mbody}</tbody></table></div>
-    <p class="note">Hver række summerer til 100%. Grønnere = mere sandsynligt. <b>–</b> = umuligt.</p></div>`;
+    <p class="note">Sandsynlighed for at deltageren ender på hver placering (rækken summerer til 100%). Grønnere = mere sandsynligt. <b>–</b> = umuligt.</p></div>`;
 
   // --- 2) Head-to-head: P(row participant finishes above column participant) ---
   let h2h = "";
@@ -620,7 +695,7 @@ function renderInsights(d){
     }).join("")}</tr>`).join("");
     h2h = `<div class="panel"><h2>Indbyrdes · chance for at slutte over modstanderen (%)</h2>
       <div class="scrollx"><table>${hhead}<tbody>${hbody}</tbody></table></div>
-      <p class="note">Læs rækken: hvor ofte deltageren slutter <b>over</b> hver af de andre. Grøn = favorit, rød = underdog. Over ${dk(d.n)} simuleringer.</p></div>`;
+      <p class="note">Sandsynlighed for at deltageren (rækken) slutter <b>over</b> hver af de andre. Grøn = mere sandsynligt, rød = mindre sandsynligt.</p></div>`;
   }
 
   // --- 3) Team contribution (realized or expected, toggleable) ---
@@ -642,18 +717,18 @@ function renderInsights(d){
     <div class="tfilter" style="margin:-2px 0 11px"><span class="flbl">Point</span>
       <span class="cbasis${cbReal?' active':''}" data-basis="real">Nuværende</span>
       <span class="cbasis${cbReal?'':' active'}" data-basis="xpts">Forventet</span></div>
-    <div class="contribwrap">${crows.map(r=>`
-      <div class="cb">
-        <span class="cbname" title="${esc(r.name)}">${shortName(r.name)}</span>
-        <div class="cbmid">
-          <div class="cbtrack"><div class="cbbar" style="width:${(r.total/gmax*100).toFixed(1)}%">${
-            r.segs.map((s,i)=>`<span class="cbseg" style="width:${(r.total>0?s.val/r.total*100:0).toFixed(1)}%;background:${segColor(i,r.segs.length)}" title="${esc(da(s.team))}: ${dkf(s.val,cdec)} ${unit}"></span>`).join("")}</div></div>
-          <div class="cbchips">${r.segs.map((s,i)=>`<span class="cbchip" title="${esc(da(s.team))}"><span class="cbdot" style="background:${segColor(i,r.segs.length)}"></span>${isPot?`<span class="cbpot">P${s.pot}</span> `:""}${fl(s.team)} ${dkf(s.val,cdec)}</span>`).join("")}</div>
+    <div class="contribcols">${crows.map(r=>`
+      <div class="ccol">
+        <div class="cplot">
+          <div class="ctot">${dkf(r.total,cdec)}</div>
+          <div class="cbarv" style="height:${(r.total/gmax*90).toFixed(1)}%">${
+            r.segs.map((s,i)=>`<span class="cseg" style="height:${(r.total>0?s.val/r.total*100:0).toFixed(1)}%;background:${segColor(i,r.segs.length)}" title="${esc(da(s.team))}: ${dkf(s.val,cdec)} ${unit}"></span>`).join("")}</div>
         </div>
-        <span class="rval">${dkf(r.total,cdec)}</span>
+        <div class="cname" title="${esc(r.name)}">${shortName(r.name)}</div>
+        <div class="clegend">${r.segs.map((s,i)=>`<span class="cleg" title="${esc(da(s.team))}"><span class="cbdot" style="background:${segColor(i,r.segs.length)}"></span>${isPot?`<span class="cbpot">P${s.pot}</span> `:""}${fl(s.team)} ${dkf(s.val,cdec)}</span>`).join("")}</div>
       </div>`).join("")}
     </div>
-    <p class="note">Bjælkens længde = ${cbReal?'realiserede':'forventede'} slutpoint i alt; chips = hvert holds bidrag (farven matcher bjælken)${isPot?', sorteret efter pulje (P1→P5)':''}.</p></div>`;
+    <p class="note">Søjlens højde = ${cbReal?'realiserede':'forventede'} slutpoint i alt; hvert farvet felt = ét holds bidrag${isPot?' (stablet nedefra efter pulje P1→P5)':''}.</p></div>`;
 
   $("#poolMatrix").innerHTML = matrix + h2h + contrib;
   $("#poolMatrix").querySelectorAll(".cbasis").forEach(b =>
@@ -675,18 +750,78 @@ function renderStages(d){
   $("#stageTbl").innerHTML = head + "<tbody>"+body+"</tbody>";
 }
 
-function renderGroups(d){
-  $("#groups").innerHTML = d.groups.map(g=>`
-    <div class="gcard"><h4>Gruppe ${g.letter}</h4>
-      ${g.teams.map(t=>{
-        const bar = t.pos.map((v,j)=>`<i style="width:${v}%;background:${distColor(j,4)}"></i>`).join("");
-        return `<div class="grow ${t.adv>=50?'adv':'out'}">
-          <span class="gn">${ft(t.team)}</span>
-          <span class="posbar" title="1.: ${dk(t.pos[0])}% · 2.: ${dk(t.pos[1])}% · 3.: ${dk(t.pos[2])}% · 4.: ${dk(t.pos[3])}%">${bar}</span>
-          <span class="gadv">${dk(t.adv)}%</span>
-        </div>`;
-      }).join("")}
-    </div>`).join("");
+// Gruppespil tab: full standings (with advance %), the 3rd-place ladder, and all played
+// group games grouped by Spilledag (matchday). Always aggregate/real — never per-scenario.
+const advCls = v => v >= 99.95 ? "go" : (v <= 0.05 ? "no" : "");
+const gdf = g => (g > 0 ? "+" : "") + g;            // signed goal difference
+function renderGroupsTab(d){
+  // --- Standings (one compact table per group) ---
+  const stand = (d.group_standings || []).map(g => {
+    const rows = g.teams.map(t => {
+      // Top-2 always qualify; highlight a 3rd's rank only when it's (near-)certain to advance
+      // as a best third — mid-stage, an uncertain 3rd stays unhighlighted.
+      const adv = t.adv;
+      const through = t.rank <= 2 || (t.rank === 3 && adv >= 99.95);
+      const cls = [through ? "q" : "", (g.complete && adv <= 0.05) ? "elimr" : ""].join(" ").trim();
+      return `<tr class="${cls}">
+        <td class="rk">${t.rank}</td>
+        <td class="l nm">${ft(t.team)}</td>
+        <td>${t.played}</td><td>${t.w}</td><td>${t.d}</td><td>${t.l}</td>
+        <td>${t.gf}-${t.ga}</td><td>${gdf(t.gd)}</td>
+        <td class="pts">${t.pts}</td>
+        <td class="vadv ${advCls(t.adv)}">${dk(t.adv)}%</td>
+      </tr>`;
+    }).join("");
+    return `<div class="gcard"><h4>Gruppe ${g.letter}</h4>
+      <table class="gtbl"><thead><tr>
+        <th></th><th class="l">Hold</th><th title="Kampe">K</th><th title="Vundet">V</th>
+        <th title="Uafgjort">U</th><th title="Tabt">T</th><th>Mål</th><th title="Målforskel">MF</th>
+        <th title="Point">P</th><th title="Sandsynlighed for avancement">Videre</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>`;
+  }).join("");
+
+  // --- 3rd-place ladder (best 8 of 12 advance) ---
+  let thirds = "";
+  if((d.thirds || []).length){
+    const rows = d.thirds.map(t => `
+      <tr class="${t.qualified ? "q" : "elimr"}${t.rank === 8 ? " cutline" : ""}">
+        <td class="rk">${t.rank}</td>
+        <td class="l nm">${ft(t.team)}</td>
+        <td class="l"><span class="gtag">Gr ${t.group}</span></td>
+        <td class="pts">${t.pts}</td>
+        <td>${gdf(t.gd)}</td><td>${t.gf}</td>
+        <td class="vadv ${advCls(t.adv)}">${dk(t.adv)}%</td>
+      </tr>`).join("");
+    thirds = `<h2 style="margin-top:22px">Bedste treere</h2>
+      <div class="scrollx"><table class="gtbl"><thead><tr>
+        <th></th><th class="l">Hold</th><th class="l">Gruppe</th><th title="Point">P</th>
+        <th title="Målforskel">MF</th><th title="Mål">Mål</th>
+        <th title="Sandsynlighed for avancement">Videre</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="cutnote">De 8 bedste treere går videre (over den gyldne streg). “Videre” = sandsynlighed for avancement.</p>`;
+  }
+  $("#gStandings").innerHTML =
+    `<h2>Gruppestillinger</h2><div class="gwrap">${stand}</div>${thirds}`;
+
+  // --- Results grouped by Spilledag (matchday), each sorted by date then group ---
+  const byMd = {};
+  (d.group_results || []).forEach(r => (byMd[r.matchday] ??= []).push(r));
+  const md = Object.keys(byMd).map(Number).sort((a, b) => a - b).map(m => {
+    const games = byMd[m].slice().sort((x, y) =>
+      x.date < y.date ? -1 : x.date > y.date ? 1 : x.group.localeCompare(y.group));
+    const rows = games.map(r => {
+      const dd = `${r.date.slice(8)}/${r.date.slice(5, 7)}`;
+      return `<div class="gres">
+        <span class="gdate">${dd}</span>
+        <span class="gtag">Gr ${r.group}</span>
+        <span class="gh ${r.gh > r.ga ? "gwin" : ""}">${ft(r.home)}</span>
+        <span class="gsc">${r.gh}–${r.ga}</span>
+        <span class="ga2 ${r.ga > r.gh ? "gwin" : ""}">${ft(r.away)}</span>
+      </div>`;
+    }).join("");
+    return `<div class="mdsec"><h3>Spilledag ${m}</h3>${rows}</div>`;
+  }).join("");
+  $("#gResults").innerHTML = `<h2>Resultater</h2>${md || '<p class="note">Ingen kampe spillet endnu.</p>'}`;
 }
 
 let TRAP_POT = "all";
@@ -800,11 +935,29 @@ document.querySelectorAll(".tab").forEach(t =>
     document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
     t.classList.add("active");
     $("#v-"+t.dataset.v).classList.add("active");
+    // Bracket connectors need a visible (laid-out) container to measure, so draw on open.
+    if(t.dataset.v === "path") requestAnimationFrame(() => drawConnectors($("#bracket")));
   }));
+let _bkResize;
+window.addEventListener("resize", () => {
+  clearTimeout(_bkResize);
+  _bkResize = setTimeout(() => {
+    if($("#v-path").classList.contains("active")) drawConnectors($("#bracket"));
+  }, 150);
+});
 document.querySelectorAll(".potf").forEach(b =>
   b.addEventListener("click", () => {
     document.querySelectorAll(".potf").forEach(x=>x.classList.remove("active"));
     b.classList.add("active"); TRAP_POT = b.dataset.pot; renderTeams();
+  }));
+// Gruppespil sub-toggle: Stillinger vs Resultater (content is already rendered; just swap).
+document.querySelectorAll(".gview").forEach(b =>
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".gview").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    const v = b.dataset.gview;
+    $("#gStandings").style.display = v === "standings" ? "" : "none";
+    $("#gResults").style.display   = v === "results" ? "" : "none";
   }));
 
 function setComp(c){

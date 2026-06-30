@@ -35,6 +35,32 @@ SLOT_FEEDERS = {
     104: (101, 102),
 }
 
+
+def _bracket_rows():
+    """Vertical bracket position for every knockout slot, from the locked feeder tree.
+    A depth-first walk from the Final lays the 16 R32 slots out top->bottom in true bracket
+    order; each later slot then sits at the midpoint of its two feeders. Rendering each round
+    as a flat column ordered by these rows reads as a proper 16->8->4->2->1 tree."""
+    leaves = []
+
+    def walk(node):
+        if node in SLOT_FEEDERS:
+            f1, f2 = SLOT_FEEDERS[node]
+            walk(f1)
+            walk(f2)
+        else:
+            leaves.append(node)
+
+    walk(104)                                   # 104 = the Final, root of the tree
+    rows = {n: float(i) for i, n in enumerate(leaves)}
+    for num in sorted(SLOT_FEEDERS):            # ascending => feeders already placed
+        f1, f2 = SLOT_FEEDERS[num]
+        rows[num] = (rows[f1] + rows[f2]) / 2
+    return rows
+
+
+BRACKET_ROWS = _bracket_rows()
+
 # The two fantasy competitions and how each is scored.
 POOLS = {
     "Trap":    {"metric": "trap",    "participants": wc.TRAP_OPTIONS},
@@ -108,6 +134,9 @@ print(f"Loaded {len(PRICES)} prices, {len(POTS)} pots.")
 KNOCKOUT = wc.load_knockout(os.path.join(HERE, "data", "knockout.csv"))
 REAL_A, REAL_T, REAL_GF, REAL_GA, REAL_INFO = wc.realized_points(
     DATA[0], DATA[2], DATA[3], DATA[4], DATA[5], knockout=KNOCKOUT)
+# Deterministic group-stage tables (standings, dated results, 3rd-place ladder) for the
+# Gruppespil tab. Pure function of results so far; the per-run advance % is merged in later.
+GROUP_DETAIL = wc.group_stage_detail(DATA[0], DATA[2], DATA[3], DATA[4], DATA[5])
 print(f"Realized points so far: {REAL_INFO}. Ready.")
 
 
@@ -259,6 +288,18 @@ def run_simulation(n, n_samples=0):
         teams.sort(key=lambda t: (t["adv"], t["pos"][0]), reverse=True)
         group_tables.append({"letter": chr(65 + gi), "teams": teams})
 
+    # Detailed Gruppespil tables: deterministic standings/results/3rd-place ladder, enriched
+    # with each team's simulated advance likelihood (the "går videre" column — 100/0 now that
+    # the groups are settled, but probabilistic when reused for an in-progress tournament).
+    adv_pct = {t: round(ga.get(t, 0) / n * 100, 1) for g in groups for t in map(str, g)}
+    pos_pct = {t: [round(c / n * 100, 1) for c in gp.get(t, [0, 0, 0, 0])]
+               for g in groups for t in map(str, g)}
+    group_standings = [
+        {**grp, "teams": [{**row, "adv": adv_pct.get(row["team"], 0.0),
+                           "pos": pos_pct.get(row["team"], [])} for row in grp["teams"]]}
+        for grp in GROUP_DETAIL["standings"]]
+    thirds = [{**row, "adv": adv_pct.get(row["team"], 0.0)} for row in GROUP_DETAIL["thirds"]]
+
     # Per-competition standings (+ prices/pots, squad validity, optimal squad).
     ax = {r["team"]: r["xpts"] for r in andreas_xpts}
     tx = {r["team"]: r["xpts"] for r in trap_xpts}
@@ -347,8 +388,13 @@ def run_simulation(n, n_samples=0):
         "trap_xpts": trap_xpts,
         "teams": team_rows,
         "rounds": rounds,
+        "bracket_rows": BRACKET_ROWS,   # slot num -> vertical tree position (for the bracket layout)
         "stage_reach": stage_reach,
         "groups": group_tables,
+        "group_standings": group_standings,   # Gruppespil: full standings + advance %
+        "group_results": GROUP_DETAIL["results"],   # played group games, dated + matchday
+        "thirds": thirds,                      # 3rd-place ladder for the best-8 cut
+
         "pools": pools_out,
         "h2h": h2h,
         # Scenarios drawn from THIS run: {bracket, scores:{pool:{participant:pts}}}.
