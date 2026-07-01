@@ -131,6 +131,9 @@
   /* gruppespil (rebuilt tab) */
   .gwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
   .gtbl{width:100%;border-collapse:collapse;font-size:12.5px}
+  /* fixed layout: numeric cols get fixed widths (colgroup), name col takes the
+     remainder and ellipsizes — so a long name can't push the table wider than its card (phone) */
+  .gstand{table-layout:fixed}
   .gtbl th{color:var(--dim);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.3px;
     padding:3px 5px;text-align:right;border-bottom:1px solid var(--line)}
   .gtbl td{padding:5px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
@@ -773,7 +776,11 @@ function renderGroupsTab(d){
       </tr>`;
     }).join("");
     return `<div class="gcard"><h4>Gruppe ${g.letter}</h4>
-      <table class="gtbl"><thead><tr>
+      <table class="gtbl gstand"><colgroup>
+        <col style="width:20px"><col><col style="width:22px"><col style="width:22px">
+        <col style="width:22px"><col style="width:22px"><col style="width:40px">
+        <col style="width:30px"><col style="width:24px"><col style="width:48px">
+      </colgroup><thead><tr>
         <th></th><th class="l">Hold</th><th title="Kampe">K</th><th title="Vundet">V</th>
         <th title="Uafgjort">U</th><th title="Tabt">T</th><th>Mål</th><th title="Målforskel">MF</th>
         <th title="Point">P</th><th title="Sandsynlighed for avancement">Videre</th>
