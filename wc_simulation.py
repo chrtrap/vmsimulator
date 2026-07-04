@@ -665,9 +665,16 @@ _ROUND_ALIAS = {'R32': 'R32', 'RO32': 'R32', 'R16': 'R16', 'RO16': 'R16',
                 '3RD': 'BRONZE', 'THIRD': 'BRONZE', 'BRONZE': 'BRONZE'}
 
 
-def load_knockout(path):
+def load_knockout(path, team_names=None):
     """Parse the hand-maintained knockout results file (data/knockout.csv).
-    Returns a list of match dicts; [] if the file is missing or has no data rows."""
+    Returns a list of match dicts; [] if the file is missing or has no data rows.
+
+    If ``team_names`` (an iterable of the valid English team names, exactly as in
+    groups.txt) is given, every home/away/winner is validated against it and a
+    ValueError is raised for any unknown name. A misspelled or Danish name (e.g.
+    "Kap Verde" instead of "Cape Verde") would otherwise fail *silently*: the pin
+    is matched by team-pair, so an unmatched name just makes the game get
+    re-simulated instead of using the real result — a wrong bracket with no warning."""
     if not os.path.exists(path):
         return []
 
@@ -696,6 +703,22 @@ def load_knockout(path):
                 'decider': (row.get('decider') or 'FT').strip().upper(),
                 'winner': (row.get('winner') or '').strip(),
             })
+
+    if team_names is not None:
+        valid = set(team_names)
+        unknown = []
+        for m in out:
+            for field in ('home', 'away', 'winner'):
+                name = m[field]
+                if name and name not in valid and name not in [u[1] for u in unknown]:
+                    unknown.append((f"{m['round']} {m['home']} vs {m['away']}", name))
+        if unknown:
+            lines = "\n".join(f"  {name!r}  (in row: {where})" for where, name in unknown)
+            raise ValueError(
+                f"{path}: {len(unknown)} unknown team name(s) — use the exact English "
+                f"names from groups.txt (not Danish, e.g. 'Cape Verde' not 'Kap Verde'). "
+                f"An unmatched name silently un-pins the game (it gets re-simulated).\n" + lines)
+
     return out
 
 

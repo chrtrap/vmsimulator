@@ -131,7 +131,8 @@ if _miss_q:
 print(f"Loaded {len(PRICES)} prices, {len(POTS)} pots.")
 
 # Realized points: deterministic, banked from matches actually played so far.
-KNOCKOUT = wc.load_knockout(os.path.join(HERE, "data", "knockout.csv"))
+KNOCKOUT = wc.load_knockout(os.path.join(HERE, "data", "knockout.csv"),
+                            team_names=[str(t) for t in DATA[0].flatten()])
 REAL_A, REAL_T, REAL_GF, REAL_GA, REAL_INFO = wc.realized_points(
     DATA[0], DATA[2], DATA[3], DATA[4], DATA[5], knockout=KNOCKOUT)
 # Deterministic group-stage tables (standings, dated results, 3rd-place ladder) for the
