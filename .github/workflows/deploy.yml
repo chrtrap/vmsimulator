@@ -11,10 +11,13 @@ permissions:
   pages: write
   id-token: write
 
-# Only one deploy at a time; newer pushes cancel an in-progress run.
+# Only one deploy at a time. Do NOT cancel an in-progress run: cancelling a
+# deployment that GitHub Pages has already created leaves it in a failed state,
+# and the next run then dies with "Deployment failed, try again later." Queue
+# instead so back-to-back result edits each deploy to completion.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
