@@ -7,7 +7,15 @@ team names are stored internally in **English** and translated for display.
 ## Deploy & run
 - **Repo:** github.com/chrtrap/vmsimulator (branch `main`). **Live:** https://chrtrap.github.io/vmsimulator/
 - **CI/CD:** `.github/workflows/deploy.yml` runs on every push to `main` → installs `pandas numpy`
-  → runs `build.py` → deploys `site/` to GitHub Pages. Free (public repo). No secrets.
+  → runs `build.py` → **force-pushes `site/` to the `gh-pages` branch** (plain git, `contents: write`
+  token). GitHub's classic branch-based Pages builder serves `gh-pages` (**Pages source = `gh-pages`
+  branch, `/`, build_type `legacy`** — set via the API, not in the repo). A push to `gh-pages`
+  auto-triggers the Pages build; live in ~1 min. Free (public repo). No secrets.
+  - **Why not `actions/deploy-pages`?** The old artifact → `deploy-pages` path was chronically flaky
+    ("Deployment failed, try again later." / "Fetching artifact metadata failed."), ~50% of R16-era
+    pushes. The build always succeeded; only that deploy backend failed. The gh-pages path avoids it.
+  - The workflow writes `site/version.txt` = `<commit SHA> <UTC timestamp>`. Verify a deploy landed:
+    `curl -s https://chrtrap.github.io/vmsimulator/version.txt` should show HEAD's SHA.
 - **Update loop:** edit `data/knockout.csv` (and/or refresh `Elo files/`), commit, push → ~1 min → live.
 - **Local dev:** needs pandas+numpy (any Python ≥3.11; code is pandas-3 compatible).
   - `python3 server.py` → http://localhost:8000 (serves `index.html` + a live, cached `/data.json`).
@@ -107,16 +115,17 @@ omits ET/P — that's why this file exists alongside the group `results.tsv`.
 - Keep code pandas-3 safe (use `.itertuples`, `dict(zip(...))`, label-based access — no positional Series `[0]`).
 
 ## Current state / open items
-- Group stage complete (72/72). **Knockout underway:** `knockout.csv` holds the played KO games —
-  currently one row, `R32,Canada,South Africa,1-0,,FT,Canada`. Add a row per game as it's played
-  (that's the whole update loop), commit, push.
+- Group stage complete (72/72). **Knockout underway** (R16 as of 2026-07-06): `knockout.csv` holds the
+  played KO games (16× R32 + R16 rows). Add a row per game as it's played (that's the whole update
+  loop), commit, push.
 - **Known model characteristic (decided to leave):** the goal model is a bit overconfident vs its own
   Elo basis — single-match favourite win% runs ~3–4 pts above the Elo expectation, worst at large gaps
   (e.g. Argentina ~98% vs Cape Verde in R32; Elo says ~95%). Root cause: `match_simulator.py` maps Elo→
   goals linearly and symmetrically (`λ = 1.35 ± Δ/400`, underdog floored at 0.1), so the goal margin is
   too steep. The single lever is the **`/400` divisor** (≈`/500` would track Elo closely). Maintainer
   chose to keep it — the high numbers are mostly the genuinely large Elo gaps, not a bug.
-- CI shows a harmless "Node 20 → 24" deprecation warning; bump action versions in `deploy.yml` eventually.
+- CI shows a harmless "Node 20 → 24" deprecation warning (checkout@v4 / setup-python@v5); bump action
+  versions in `deploy.yml` eventually. Harmless — does not affect the build or deploy.
 - **Euro reuse:** UI wording is tournament-agnostic, but the engine is hardcoded to WC2026's shape
   (12 groups, R32, best-8 thirds, host trio). Reusing for the Euros (24 teams, 6 groups, R16, best-4 thirds)
   is a real refactor — parameterize format + new fixtures/Elo/pot data.
