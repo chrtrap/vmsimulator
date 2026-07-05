@@ -5,16 +5,17 @@ on:
     branches: [main]
   workflow_dispatch:        # lets you trigger a rebuild manually from the Actions tab
 
-# Permissions the deploy needs (uses the built-in token — no secrets to set up).
+# Publishing pushes the built site to the gh-pages branch, so the token needs
+# write access to repo contents. (The old artifact + actions/deploy-pages path
+# was chronically flaky — "Deployment failed, try again later." / "Fetching
+# artifact metadata failed." — so we bypass it entirely and let GitHub's classic
+# branch-based Pages builder serve the gh-pages branch.)
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 # Only one deploy at a time. Do NOT cancel an in-progress run: cancelling a
-# deployment that GitHub Pages has already created leaves it in a failed state,
-# and the next run then dies with "Deployment failed, try again later." Queue
-# instead so back-to-back result edits each deploy to completion.
+# publish mid-push can leave gh-pages half-written. Queue instead so back-to-back
+# result edits each deploy to completion.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -22,9 +23,6 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,14 +40,20 @@ jobs:
         env:
           N_STATS: "100000"   # more sims -> more stable odds (~0.1pp noise). Local default stays 10k.
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
+      - name: Stamp build (fingerprint for verifying the live deploy)
+        run: |
+          echo "${GITHUB_SHA} $(date -u +%Y-%m-%dT%H:%M:%SZ)" > site/version.txt
+          touch site/.nojekyll   # serve data.json/index.html as-is, no Jekyll processing
 
-      - name: Upload site artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-
-      - name: Deploy to GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v4
+      - name: Publish to gh-pages branch
+        run: |
+          cd site
+          git init -q
+          git checkout -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Deploy ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
