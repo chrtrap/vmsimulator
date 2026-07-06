@@ -7,15 +7,21 @@ team names are stored internally in **English** and translated for display.
 ## Deploy & run
 - **Repo:** github.com/chrtrap/vmsimulator (branch `main`). **Live:** https://chrtrap.github.io/vmsimulator/
 - **CI/CD:** `.github/workflows/deploy.yml` runs on every push to `main` → installs `pandas numpy`
-  → runs `build.py` → **force-pushes `site/` to the `gh-pages` branch** (plain git, `contents: write`
-  token). GitHub's classic branch-based Pages builder serves `gh-pages` (**Pages source = `gh-pages`
-  branch, `/`, build_type `legacy`** — set via the API, not in the repo). A push to `gh-pages`
-  auto-triggers the Pages build; live in ~1 min. Free (public repo). No secrets.
-  - **Why not `actions/deploy-pages`?** The old artifact → `deploy-pages` path was chronically flaky
-    ("Deployment failed, try again later." / "Fetching artifact metadata failed."), ~50% of R16-era
-    pushes. The build always succeeded; only that deploy backend failed. The gh-pages path avoids it.
+  → runs `build.py` → uploads `site/` as a Pages artifact → `actions/deploy-pages`. **Pages source =
+  "GitHub Actions"** (`build_type: workflow`, set via the API — not in the repo). Live in ~1 min. Free
+  (public repo). No secrets.
+  - **The deploy is retried up to 5× with backoff** (`deploy1`..`deploy5` steps, each gated on the
+    previous attempt's `outcome == 'failure'`; first success short-circuits the rest). GitHub's Pages
+    deploy backend intermittently (~half the time) rejects a deployment on the first status poll with
+    **"Deployment failed, try again later."** — instant, unrelated to the build, ~50%. Each attempt is a
+    fresh deployment, so retrying reaches success. **Do not** re-add `cancel-in-progress: true` and do not
+    go back to a `gh-pages` branch: branch-based Pages runs GitHub's *managed* "pages build and
+    deployment" workflow, which uses the same flaky `deploy-pages` internally and **can't be given
+    retries** — that's why the branch approach (tried 2026-07-05) was reverted.
   - The workflow writes `site/version.txt` = `<commit SHA> <UTC timestamp>`. Verify a deploy landed:
     `curl -s https://chrtrap.github.io/vmsimulator/version.txt` should show HEAD's SHA.
+  - If ALL 5 attempts ever fail (job red), just re-run the job or push again — the next run's retries
+    almost always clear it. Nothing to fix in the code.
 - **Update loop:** edit `data/knockout.csv` (and/or refresh `Elo files/`), commit, push → ~1 min → live.
 - **Local dev:** needs pandas+numpy (any Python ≥3.11; code is pandas-3 compatible).
   - `python3 server.py` → http://localhost:8000 (serves `index.html` + a live, cached `/data.json`).
