@@ -5,17 +5,15 @@ on:
     branches: [main]
   workflow_dispatch:        # lets you trigger a rebuild manually from the Actions tab
 
-# Publishing pushes the built site to the gh-pages branch, so the token needs
-# write access to repo contents. (The old artifact + actions/deploy-pages path
-# was chronically flaky — "Deployment failed, try again later." / "Fetching
-# artifact metadata failed." — so we bypass it entirely and let GitHub's classic
-# branch-based Pages builder serve the gh-pages branch.)
+# Permissions the deploy needs (uses the built-in token — no secrets to set up).
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 # Only one deploy at a time. Do NOT cancel an in-progress run: cancelling a
-# publish mid-push can leave gh-pages half-written. Queue instead so back-to-back
-# result edits each deploy to completion.
+# deployment mid-flight leaves it failed and the next run inherits a bad state.
+# Queue instead so back-to-back result edits each deploy to completion.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -23,6 +21,9 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: https://chrtrap.github.io/vmsimulator/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,19 +42,63 @@ jobs:
           N_STATS: "100000"   # more sims -> more stable odds (~0.1pp noise). Local default stays 10k.
 
       - name: Stamp build (fingerprint for verifying the live deploy)
-        run: |
-          echo "${GITHUB_SHA} $(date -u +%Y-%m-%dT%H:%M:%SZ)" > site/version.txt
-          touch site/.nojekyll   # serve data.json/index.html as-is, no Jekyll processing
+        run: echo "${GITHUB_SHA} $(date -u +%Y-%m-%dT%H:%M:%SZ)" > site/version.txt
 
-      - name: Publish to gh-pages branch
-        run: |
-          cd site
-          git init -q
-          git checkout -q -b gh-pages
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -q -m "Deploy ${GITHUB_SHA}"
-          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      # actions/deploy-pages hits a GitHub Pages backend that intermittently
+      # rejects a deployment on the first status poll ("Deployment failed, try
+      # again later."), ~half the time, unrelated to the build. It is a fresh,
+      # independent attempt each time, so we retry up to 5x with backoff. Each
+      # step runs only if the previous attempt *failed*; a success skips the
+      # rest of the chain. The final attempt has no continue-on-error, so if all
+      # five fail the job fails loudly.
+      - name: Deploy to GitHub Pages (attempt 1)
+        id: deploy1
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: Backoff before attempt 2
+        if: steps.deploy1.outcome == 'failure'
+        run: sleep 20
+
+      - name: Deploy to GitHub Pages (attempt 2)
+        id: deploy2
+        if: steps.deploy1.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: Backoff before attempt 3
+        if: steps.deploy2.outcome == 'failure'
+        run: sleep 30
+
+      - name: Deploy to GitHub Pages (attempt 3)
+        id: deploy3
+        if: steps.deploy2.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: Backoff before attempt 4
+        if: steps.deploy3.outcome == 'failure'
+        run: sleep 45
+
+      - name: Deploy to GitHub Pages (attempt 4)
+        id: deploy4
+        if: steps.deploy3.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: Backoff before attempt 5
+        if: steps.deploy4.outcome == 'failure'
+        run: sleep 60
+
+      - name: Deploy to GitHub Pages (attempt 5, final)
+        id: deploy
+        if: steps.deploy4.outcome == 'failure'
+        uses: actions/deploy-pages@v4
