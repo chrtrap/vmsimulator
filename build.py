@@ -30,6 +30,8 @@ def main():
     with open(out_json, "w", encoding="utf-8") as f:
         json.dump(payload, f, separators=(",", ":"), ensure_ascii=False)
     shutil.copy(os.path.join(HERE, "index.html"), os.path.join(SITE, "index.html"))
+    shutil.copytree(os.path.join(HERE, "flags"), os.path.join(SITE, "flags"),
+                    dirs_exist_ok=True)  # bundled SVG flags (index.html references flags/*.svg)
 
     kb = os.path.getsize(out_json) / 1024
     print(f"Wrote site/data.json ({kb:.0f} KB) and site/index.html")

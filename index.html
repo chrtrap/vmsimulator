@@ -71,6 +71,9 @@
   .bracket .match .team{padding:2px 7px}
   .team .barbg{position:absolute;left:0;top:0;bottom:0;background:rgba(33,211,162,.16);z-index:0}
   .team .nm{flex:1;position:relative;z-index:1;line-height:1.2}
+  /* Bundled SVG flags (see fl()) — sized to sit inline like the old emoji flags. */
+  .flag{display:inline-block;width:1.18em;height:.885em;vertical-align:-.16em;margin-right:.05em;
+    border-radius:2px;object-fit:cover;box-shadow:0 0 0 .5px rgba(0,0,0,.35)}
   .team.win .nm{color:var(--accent);font-weight:700}
   .team .p{position:relative;z-index:1;color:var(--dim);font-variant-numeric:tabular-nums;font-size:12px}
   .score{position:relative;z-index:1;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--gold)}
@@ -359,7 +362,24 @@ const ROUND_DA = {
   "Round of 32":"1/16-finaler","Round of 16":"1/8-finaler","Quarterfinals":"Kvartfinaler",
   "Semifinals":"Semifinaler","Final":"Finale","Third Place Match":"Bronzekamp"
 };
-const fl = t => (FLAG[t] || "🏳️");
+// Subdivision flags (England/Scotland use emoji tag-sequences, not ISO alpha-2, and
+// Windows has no glyph for them at all) -> flag-icons file basenames.
+const FLAG_SUB = { "England":"gb-eng", "Scotland":"gb-sct" };
+// Team -> flag-icons SVG basename. Country codes are decoded from the emoji's two
+// regional-indicator letters (🇦🇷 -> "ar"); no separate table to keep in sync.
+const flagCode = t => {
+  if (FLAG_SUB[t]) return FLAG_SUB[t];
+  const cps = [...(FLAG[t] || "")];
+  if (cps.length === 2) {
+    const a = cps[0].codePointAt(0), b = cps[1].codePointAt(0);
+    if (a >= 0x1F1E6 && a <= 0x1F1FF && b >= 0x1F1E6 && b <= 0x1F1FF)
+      return String.fromCharCode(97 + a - 0x1F1E6, 97 + b - 0x1F1E6);
+  }
+  return null;
+};
+// Render flags as bundled local SVGs. Emoji flags don't render on Windows/Chrome
+// (Segoe UI Emoji ships no country-flag glyphs -> shows raw letters like "AR").
+const fl = t => { const c = flagCode(t); return c ? `<img class="flag" src="flags/${c}.svg" alt="" loading="lazy">` : "🏳️"; };
 const da = t => (TEAM_DA[t] || t);
 const ft = t => `${fl(t)} ${da(t)}`;
 // Danish number formatting: "." for thousands, "," for decimals (10.000 · 28,0%).

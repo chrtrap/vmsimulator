@@ -104,8 +104,15 @@ andreas_real, trap_real), `rounds` (consensus bracket; each match may have `real
   values (bar `width`, rgba alpha keep ".").
 - Realized (played) KO games are highlighted **✓ Spillet** with the real score (no %) in both the
   consensus path and single scenarios.
-- `TEAM_DA` maps English→Danish names; `FLAG` maps team→emoji; round names → Danish (`ROUND_DA`);
+- `TEAM_DA` maps English→Danish names; round names → Danish (`ROUND_DA`);
   deciders → Danish (`DECIDER_DA`: ET→"Forl.", Penalties→"Straffe").
+- **Flags** are bundled local SVGs in `flags/` (lipis/flag-icons 4x3, MIT), **not** emoji —
+  Windows/Chrome has no country-flag glyph in Segoe UI Emoji and renders emoji flags as raw
+  letters ("AR"). `FLAG` still holds the emoji, but only as the source `fl()`/`flagCode()` decode
+  to an ISO code (`🇦🇷`→`ar`) → `<img class="flag" src="flags/ar.svg">`. England/Scotland use
+  emoji tag-sequences (no ISO code) so `FLAG_SUB` maps them to `gb-eng`/`gb-sct`. `build.py`
+  `shutil.copytree`s `flags/`→`site/flags/`; `server.py` serves `/flags/*.svg` for local dev.
+  Adding a team: add its `FLAG` emoji **and** drop the matching `flags/<cc>.svg` in.
 
 ## `knockout.csv` format
 Header `round,home,away,reg,et,decider,winner` must stay first; `#` lines ignored.

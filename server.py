@@ -440,6 +440,13 @@ class Handler(BaseHTTPRequestHandler):
                 import traceback
                 traceback.print_exc()
                 return self._send(500, json.dumps({"error": str(e)}), "application/json")
+        if parsed.path.startswith("/flags/") and parsed.path.endswith(".svg"):
+            name = os.path.basename(parsed.path)          # strip any path traversal
+            fpath = os.path.join(HERE, "flags", name)
+            if os.path.isfile(fpath):
+                with open(fpath, "rb") as f:
+                    return self._send(200, f.read(), "image/svg+xml")
+            return self._send(404, json.dumps({"error": "flag not found"}), "application/json")
         if parsed.path == "/api/simulate":
             qs = parse_qs(parsed.query)
             try:
