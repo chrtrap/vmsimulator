@@ -168,8 +168,10 @@
   .psort,.pview,.cbasis,.gview{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 13px;font-size:12.5px;cursor:pointer}
   .psort:hover,.pview:hover,.cbasis:hover,.gview:hover{color:var(--txt)}
   .psort.active,.pview.active,.cbasis.active,.gview.active{color:var(--txt);border-color:var(--accent);background:#16241f}
-  /* Placement matrix: "–" = provably impossible placement. */
-  td.n.imp{color:#39414b;background:#0b0e12;font-weight:400}
+  /* Standings: "how this participant can win" button + muted note when they never won. */
+  .winbtn{margin-top:9px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer}
+  .winbtn:hover{color:var(--txt);border-color:var(--accent);background:#16241f}
+  .nowin{display:inline-block;margin-top:9px;color:var(--dim);font-size:12px;opacity:.6}
   /* Head-to-head grid + team-contribution bars in the Konkurrence analysis view. */
   th.hh{text-align:right}
   td.hhd{color:var(--dim);text-align:center}
@@ -328,6 +330,7 @@ const $ = s => document.querySelector(s);
 let LAST = null;     // baked data.json payload (stats + scenario pool)
 let MODE = "stats";  // "stats" = baked N-sim view · "single" = one random scenario
 let SAMPLE = null;   // currently shown scenario {bracket, scores}
+let WIN_FOR = null;  // participant name when SAMPLE is their saved "how they win" scenario (else null)
 
 // Selected competition (drives the Konkurrence + Forventede holdpoint views), persisted in the URL.
 const params = new URLSearchParams(location.search);
@@ -416,6 +419,18 @@ async function boot(){
 function reroll(){   // pick a new random scenario from the pool
   const pool = (LAST && LAST.samples) ? LAST.samples : [];
   SAMPLE = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+  WIN_FOR = null;    // a random roll is not tied to any participant
+}
+
+// Load a participant's saved winning scenario into the single-scenario view and jump to the bracket.
+function showWinScenario(name){
+  const scen = ((LAST && LAST.win_scenarios && LAST.win_scenarios[capComp()]) || {})[name];
+  if(!scen) return;
+  SAMPLE = scen; WIN_FOR = name; MODE = "single";
+  document.querySelectorAll(".modebtn").forEach(x => x.classList.toggle("active", x.dataset.mode === "single"));
+  render();
+  const pathTab = document.querySelector('.tab[data-v="path"]');   // show WHAT must happen (the bracket)
+  if(pathTab) pathTab.click();
 }
 
 function render(){
@@ -428,7 +443,7 @@ function render(){
 
   if(single){
     const fin = sampleBracket && sampleBracket.find(m => m.round === "Final");
-    $("#champLabel").textContent = "Vinder (ét tilfældigt scenarie)";
+    $("#champLabel").textContent = WIN_FOR ? `Vinder i dette scenarie` : "Vinder (ét tilfældigt scenarie)";
     $("#champName").innerHTML = fin ? ft(fin.w) : "—";
     $("#champPct").textContent = "";
   } else {
@@ -445,8 +460,12 @@ function render(){
     </div>`).join("") || '<div class="note">Ingen vinder registreret.</div>';
 
   renderBracket(d, sampleBracket);
-  $("#pathTitle").textContent = single ? "En mulig vej til finalen" : "Den mest sandsynlige vej til finalen";
-  $("#pathNote").textContent = single
+  const winView = single && WIN_FOR;   // WIN_FOR only styles the view while a scenario is shown
+  $("#pathTitle").textContent = winView ? `Sådan kan ${WIN_FOR} vinde`
+    : single ? "En mulig vej til finalen" : "Den mest sandsynlige vej til finalen";
+  $("#pathNote").textContent = winView
+    ? `Ét simuleret forløb hvor ${WIN_FOR} ender øverst i stillingen. Se Konkurrence-fanen for slutstillingen i netop dette scenarie.`
+    : single
     ? "Ét muligt forløb fra de simulerede turneringer. Tryk 🎲 igen for et nyt. (Slutspilsodds, Grupper og Holdpoint viser de samlede tal.)"
     : "Hver kamp viser holdet, der oftest vandt netop den plads.";
 
@@ -646,10 +665,22 @@ function renderPools(d, scenario){
           <div class="chips">${r.teams.map(t=>tag(t,isPrice)).join("")}</div>
           <div class="dist">${dist}</div>
           <div class="distlbl"><span>1.</span><span>${K}.</span></div>
+          ${winScenLine(d, r.name)}
         </div>`;
       }).join("")}
     </div>`;
   }).join("");
+  $("#pools").querySelectorAll(".winbtn").forEach(b =>
+    b.addEventListener("click", () => showWinScenario(b.dataset.name)));
+}
+
+// Standings row footer: a button that loads this participant's saved winning scenario,
+// or a muted note if they never topped their pool across the simulated tournaments.
+function winScenLine(d, name){
+  const has = d.win_scenarios && d.win_scenarios[capComp()] && d.win_scenarios[capComp()][name];
+  return has
+    ? `<button class="winbtn" data-name="${esc(name)}">🏆 Sådan kan ${shortName(name)} vinde</button>`
+    : `<span class="nowin">Vandt ingen af simuleringerne</span>`;
 }
 
 let POOL_VIEW = "table";    // 'table' = standings, 'matrix' = analysis (matrix/h2h/contribution)
@@ -663,44 +694,18 @@ function renderInsights(d){
   const order = rows.map(r => r.name);
   const K = rows.length ? rows[0].pos.length : 0;
 
-  // Provable impossibilities via squad domination. After cancelling the teams two entries
-  // share, A beats B in EVERY remaining scenario if A's leftover picks' guaranteed minimum
-  // (realized so far — points never drop) exceeds B's leftover best case (realized + the most
-  // an alive team can still earn; eliminated teams are frozen). Re-derived from live realized
-  // points each load, so more squads get locked out of placements as teams are knocked out.
-  const rv = {}; (d.teams||[]).forEach(t => rv[t.team] = (COMP==="andreas" ? t.andreas_real : t.trap_real) || 0);
-  const aliveSet = new Set((d.title_odds||[]).map(r => r.team));
-  const BONUS = COMP==="andreas" ? 32 : 18;   // upper bound on points an alive pick can still earn
-  const picks = {}; rows.forEach(r => picks[r.name] = r.teams.map(t => t.team));
-  const dominates = (a,b) => {                 // a's total > b's total in every remaining scenario?
-    const sA = new Set(picks[a]), sB = new Set(picks[b]);
-    const aMin = picks[a].filter(t=>!sB.has(t)).reduce((s,t)=>s + (rv[t]||0), 0);
-    const bMax = picks[b].filter(t=>!sA.has(t)).reduce((s,t)=>s + (rv[t]||0) + (aliveSet.has(t)?BONUS:0), 0);
-    return aMin > bMax;
-  };
-  const bound = {};   // name -> {best, worst}: ranks still reachable (1-based, inclusive)
-  rows.forEach(x=>{
-    let above=0, below=0;
-    rows.forEach(y=>{ if(y.name!==x.name){ if(dominates(y.name,x.name)) above++; if(dominates(x.name,y.name)) below++; }});
-    bound[x.name] = {best: above+1, worst: rows.length - below};
-  });
-
   // --- 1) Placement matrix (participant × finishing rank) ---
   const mhead = `<thead><tr><th>Deltager</th>${
     Array.from({length:K}, (_,j)=>`<th class="n">${j+1}.</th>`).join("")}</tr></thead>`;
   const mbody = rows.map(r=>{
-    const b = bound[r.name];
-    return `<tr><td title="${esc(r.name)}">${shortName(r.name)}</td>${r.pos.map((v,j)=>{
-      if(j+1 < b.best || j+1 > b.worst)
-        return `<td class="n imp" title="Umuligt — kan ikke nå denne placering">–</td>`;
-      const a = (v/100*0.6).toFixed(3);
-      const txt = v > 0 ? dk(v) : "&lt;0,1";   // 0 in N sims -> rare, but not proven impossible
-      return `<td class="n heat${v>0?'':' faint'}" style="background:rgba(33,211,162,${a})">${txt}</td>`;
+    return `<tr><td title="${esc(r.name)}">${shortName(r.name)}</td>${r.pos.map(v=>{
+      const a = (v/100*0.6).toFixed(3);   // 1-dec payload: a sub-0,05% chance shows as 0,0
+      return `<td class="n heat${v>0?'':' faint'}" style="background:rgba(33,211,162,${a})">${dkf(v,1)}</td>`;
     }).join("")}</tr>`;
   }).join("");
   const matrix = `<div class="panel"><h2>Placeringsmatrix · chance for hver slutplacering (%)</h2>
     <div class="scrollx"><table>${mhead}<tbody>${mbody}</tbody></table></div>
-    <p class="note">Sandsynlighed for at deltageren ender på hver placering (rækken summerer til 100%). Grønnere = mere sandsynligt. <b>–</b> = umuligt.</p></div>`;
+    <p class="note">Sandsynlighed for at deltageren ender på hver placering (rækken summerer til 100%). Grønnere = mere sandsynligt.</p></div>`;
 
   // --- 2) Head-to-head: P(row participant finishes above column participant) ---
   let h2h = "";
@@ -989,6 +994,7 @@ document.querySelectorAll(".gview").forEach(b =>
 
 function setComp(c){
   COMP = c === "andreas" ? "andreas" : "trap";
+  WIN_FOR = null;   // a saved win scenario belongs to one comp's participant
   const u = new URL(location); u.searchParams.set("comp", COMP); history.replaceState(null, "", u);
   document.querySelectorAll(".cbtn").forEach(b => b.classList.toggle("active", b.dataset.comp === COMP));
   render();

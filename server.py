@@ -400,6 +400,8 @@ def run_simulation(n, n_samples=0):
         "h2h": h2h,
         # Scenarios drawn from THIS run: {bracket, scores:{pool:{participant:pts}}}.
         "samples": extra.get("samples", []),
+        # One winning scenario per participant: {pool: {participant: {bracket, scores, team}}}.
+        "win_scenarios": extra.get("win_scenarios", {}),
     }
 
 

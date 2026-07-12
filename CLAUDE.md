@@ -82,7 +82,9 @@ header shows `played + ko_played` as "kampe spillet")}, `champion`,
 `title_odds`, `andreas_xpts`, `trap_xpts`, `teams` (per team: pot, price, andreas, trap,
 andreas_real, trap_real), `rounds` (consensus bracket; each match may have `realized` {a,b,ga,gb,w,decider}),
 `stage_reach`, `groups`, `pools` {Trap, Andreas} (each: rows with xpts/real/win/last/exp_rank/pos/teams/real_rank/cost-or-pot,
-`optimal` (by xPts), `optimal_real` (by realized pts)), `samples` (≈200 scenarios: {bracket, scores:{pool:{participant:pts}}, team:{andreas:{},trap:{}}}).
+`optimal` (by xPts), `optimal_real` (by realized pts)), `samples` (≈200 scenarios: {bracket, scores:{pool:{participant:pts}}, team:{andreas:{},trap:{}}}),
+`win_scenarios` {pool: {participant: one sample-shaped scenario — the first sim that participant finished 1st;
+uncapped, so any participant who wins ≥1 of the N sims has one. Powers the "Sådan kan X vinde" button}}.
 
 ## Frontend (index.html)
 - Mode toggle: **📊 Forventet** (10k aggregate) vs **🎲 Ny tilfældig turnering** (one random scenario from
@@ -93,7 +95,10 @@ andreas_real, trap_real), `rounds` (consensus bracket; each match may have `real
   who only knows one comp never sees the other's name.
 - Tabs: **Vejen til titlen** (bracket; heading is "Den mest sandsynlige vej til titlen" in Forventet,
   "En mulig vej til titlen" in single), **Konkurrence** (pool standings, with Nuværende/Forventet
-  sub-toggle), **Forventede holdpoint** (per-team; shows scenario points in single mode), **Runde-odds**
+  sub-toggle; each standings row has a **"🏆 Sådan kan X vinde"** button that loads that participant's
+  saved `win_scenarios` scenario into the single view and jumps to the bracket — `WIN_FOR` holds the name
+  while shown and just restyles the path title/note; rows for anyone who never won show a muted note),
+  **Forventede holdpoint** (per-team; shows scenario points in single mode), **Runde-odds**
   (stage reach), **Grupper** (group standings), **Regler** (per-comp scoring; `renderRules()` mirrors
   `trap_points`/`andreas_points` exactly — keep the two in sync if scoring ever changes).
 - **Eliminated-team muting:** in the pool standings, picked teams that are out of the tournament are

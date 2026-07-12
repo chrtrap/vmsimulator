@@ -179,6 +179,10 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
     # A subset of full sims kept as "scenarios" for the single-simulation view:
     # each = {bracket: [...matches...], scores: {pool: {participant: points}}}.
     samples = []
+    # The first sim each participant finishes 1st in — a concrete "how they can win"
+    # example. Not capped (unlike samples) so even a long-shot who wins once is captured.
+    # pool -> participant -> {bracket, scores, team} (same shape as a sample).
+    win_scenarios = {pn: {} for pn in pools} if pools is not None else {}
 
     for _ in range (nsim):
         temp_elo_dict = elo_dict.copy()
@@ -590,6 +594,7 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
             last_bracket = sim_bracket
 
         sample_scores = {}
+        sim_winners = {}   # pool -> the participant who finished 1st in THIS sim
         if pools is not None:  # score each participant for THIS simulation, then rank
             sim_a = {t: andreas_points[t] - snap_a[t] for t in andreas_points}
             sim_t = {t: trap_points[t] - snap_t[t] for t in trap_points}
@@ -610,6 +615,15 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
                     for b in range(a + 1, len(order)):
                         rowa[order[b]] += 1
                 sample_scores[pn] = {parts[i][0]: round(keys[i][0], 2) for i in range(len(parts))}
+                sim_winners[pn] = parts[order[0]][0]
+            # Stash the first sim each participant tops their pool — a concrete "how they win".
+            if collect_paths and any(w not in win_scenarios[pn]
+                                     for pn, w in sim_winners.items()):
+                scen = {'bracket': sim_bracket, 'scores': sample_scores,
+                        'team': {'andreas': {t: round(sim_a[t], 2) for t in sim_a},
+                                 'trap': {t: round(sim_t[t], 2) for t in sim_t}}}
+                for pn, w in sim_winners.items():
+                    win_scenarios[pn].setdefault(w, scen)
 
         # Keep this sim as a replayable scenario (bracket + this-sim points).
         if collect_paths and len(samples) < n_samples:
@@ -632,6 +646,7 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
             extra['group_pos'] = group_pos
             extra['group_adv'] = group_adv
             extra['samples'] = samples
+            extra['win_scenarios'] = win_scenarios
         if pools is not None:
             extra['pools'] = pool_agg
             extra['h2h'] = h2h_agg
