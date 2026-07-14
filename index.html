@@ -11,6 +11,18 @@
     --bg:#0e1116; --panel:#171c24; --panel2:#1f2630; --line:#2a323d;
     --txt:#e7edf3; --dim:#8b97a6; --accent:#21d3a2; --accent2:#3b82f6;
     --bar:#2a3340; --gold:#f5c451; --bad:#e06b6b;
+    /* Accent-derived tokens, so scenario mode can recolour the whole UI in one place. */
+    --accentink:#04221a;              /* text on an accent-filled control  */
+    --tint:#16241f;                   /* subtle bg of an active pill/tab    */
+    --accentrgb:33,211,162;           /* accent as rgb, for translucent fills */
+    --champg1:#1c2a23; --champg2:#171c24; --champbd:#284036;   /* winner banner */
+  }
+  /* Scenario view = a hypothetical "what-if", not the expected outcome: recolour to violet
+     so it's unmistakably a different mode from the green "Forventet" aggregate. */
+  body.scenario{
+    --accent:#b493ff; --accent2:#7c5cff;
+    --accentink:#150a2e; --tint:#211934; --accentrgb:180,147,255;
+    --champg1:#241c38; --champg2:#191622; --champbd:#3d2f66;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--txt);
@@ -26,12 +38,12 @@
   .preset{background:var(--panel2);border:1px solid var(--line);color:var(--dim);
     border-radius:999px;padding:6px 12px;font-size:12.5px;cursor:pointer}
   .preset:hover{color:var(--txt);border-color:var(--accent)}
-  button.run{background:var(--accent);color:#04221a;border:0;font-weight:700;
+  button.run{background:var(--accent);color:var(--accentink);border:0;font-weight:700;
     border-radius:8px;padding:9px 20px;font-size:15px;cursor:pointer}
   button.run:disabled{opacity:.5;cursor:wait}
   .status{color:var(--dim);font-size:13px;margin-left:auto}
   .champ{display:flex;align-items:center;gap:16px;margin:18px 0;padding:18px 22px;
-    background:linear-gradient(90deg,#1c2a23,#171c24);border:1px solid #284036;border-radius:12px}
+    background:linear-gradient(90deg,var(--champg1),var(--champg2));border:1px solid var(--champbd);border-radius:12px}
   .champ .trophy{font-size:34px}
   .champ .name{font-size:24px;font-weight:700}
   .champ .pct{color:var(--accent);font-size:24px;font-weight:700}
@@ -50,7 +62,7 @@
   .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .tab{background:var(--panel2);border:1px solid var(--line);color:var(--dim);
     border-radius:8px;padding:7px 13px;cursor:pointer;font-size:13px}
-  .tab.active{color:var(--txt);border-color:var(--accent);background:#16241f}
+  .tab.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
   .view{display:none}
   .view.active{display:block}
   /* bracket — a real 16->8->4->2->1 tree: aligned columns + SVG connectors */
@@ -69,7 +81,7 @@
   .team{position:relative;display:flex;justify-content:space-between;align-items:center;
     font-size:13px;padding:3px 7px;gap:6px;border-radius:5px;overflow:hidden}
   .bracket .match .team{padding:2px 7px}
-  .team .barbg{position:absolute;left:0;top:0;bottom:0;background:rgba(33,211,162,.16);z-index:0}
+  .team .barbg{position:absolute;left:0;top:0;bottom:0;background:rgba(var(--accentrgb),.16);z-index:0}
   .team .nm{flex:1;position:relative;z-index:1;line-height:1.2}
   /* Bundled SVG flags (see fl()) — sized to sit inline like the old emoji flags. */
   .flag{display:inline-block;width:1.18em;height:.885em;vertical-align:-.16em;margin-right:.05em;
@@ -78,7 +90,7 @@
   .team .p{position:relative;z-index:1;color:var(--dim);font-variant-numeric:tabular-nums;font-size:12px}
   .score{position:relative;z-index:1;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--gold)}
   .decider{font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:4px;padding:0 4px}
-  .match.final{border-color:var(--accent);box-shadow:0 0 0 1px rgba(33,211,162,.4),0 6px 20px rgba(33,211,162,.13)}
+  .match.final{border-color:var(--accent);box-shadow:0 0 0 1px rgba(var(--accentrgb),.4),0 6px 20px rgba(var(--accentrgb),.13)}
   .match.real{border-color:var(--accent);background:#15231d}
   .match .mu.real{color:var(--accent);font-weight:700;letter-spacing:.3px}
   /* tables */
@@ -101,7 +113,7 @@
   .dist{display:flex;height:8px;border-radius:5px;overflow:hidden;background:var(--bar)}
   .dist i{display:block;height:100%}
   .distlbl{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:3px}
-  .pcard.opt{border-color:var(--accent);background:#16241f}
+  .pcard.opt{border-color:var(--accent);background:var(--tint)}
   .pcard.opt .prank{color:var(--accent)}
   .pwin.bad{color:var(--bad)}
   .chip b{color:var(--accent)} .chip.po b{color:var(--gold)}
@@ -118,7 +130,7 @@
   .rule{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
   .rule:last-child{border-bottom:none}
   .rule .rl{font-size:13.5px}
-  .rule .rp{flex:0 0 auto;background:rgba(33,211,162,.15);color:var(--accent);font-weight:700;border-radius:999px;padding:2px 11px;font-size:12.5px;font-variant-numeric:tabular-nums}
+  .rule .rp{flex:0 0 auto;background:rgba(var(--accentrgb),.15);color:var(--accent);font-weight:700;border-radius:999px;padding:2px 11px;font-size:12.5px;font-variant-numeric:tabular-nums}
   .rlist{margin:4px 0 0;padding-left:20px;font-size:13.5px} .rlist li{margin:3px 0}
   .rtext{font-size:13px;color:var(--txt);margin:6px 0 0;line-height:1.45}
   /* groups */
@@ -164,13 +176,13 @@
   .tfilter .flbl{color:var(--dim);font-size:12px;margin-right:2px}
   .potf{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer}
   .potf:hover{color:var(--txt)}
-  .potf.active{color:var(--txt);border-color:var(--accent);background:#16241f}
+  .potf.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
   .psort,.pview,.cbasis,.gview{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 13px;font-size:12.5px;cursor:pointer}
   .psort:hover,.pview:hover,.cbasis:hover,.gview:hover{color:var(--txt)}
-  .psort.active,.pview.active,.cbasis.active,.gview.active{color:var(--txt);border-color:var(--accent);background:#16241f}
+  .psort.active,.pview.active,.cbasis.active,.gview.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
   /* Standings: "how this participant can win" button + muted note when they never won. */
   .winbtn{margin-top:9px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer}
-  .winbtn:hover{color:var(--txt);border-color:var(--accent);background:#16241f}
+  .winbtn:hover{color:var(--txt);border-color:var(--accent);background:var(--tint)}
   .nowin{display:inline-block;margin-top:9px;color:var(--dim);font-size:12px;opacity:.6}
   /* Head-to-head grid + team-contribution bars in the Konkurrence analysis view. */
   th.hh{text-align:right}
@@ -197,12 +209,26 @@
   .cbtn{background:var(--panel2);border:1px solid var(--line);color:var(--dim);
     border-radius:8px;padding:7px 20px;cursor:pointer;font-size:14px;font-weight:700}
   .cbtn:hover{color:var(--txt)}
-  .cbtn.active{color:#04221a;background:var(--accent);border-color:var(--accent)}
+  .cbtn.active{color:var(--accentink);background:var(--accent);border-color:var(--accent)}
   .modebtn{background:var(--panel2);border:1px solid var(--line);color:var(--dim);
     border-radius:8px;padding:8px 16px;cursor:pointer;font-size:14px;font-weight:600}
   .modebtn:hover{color:var(--txt)}
-  .modebtn.active{color:#04221a;background:var(--accent);border-color:var(--accent)}
+  .modebtn.active{color:var(--accentink);background:var(--accent);border-color:var(--accent)}
   .note{color:var(--dim);font-size:12.5px;margin:8px 0 0}
+  /* Scenario-mode banner: only visible while body.scenario is set (see render()). Sticks to the
+     top on scroll so it stays obvious that this is a hypothetical, not the expected outcome. */
+  .scenbar{display:none;position:sticky;top:0;z-index:20;align-items:center;gap:11px;
+    margin:0 0 12px;padding:10px 15px;border-radius:10px;
+    background:linear-gradient(90deg,var(--champg1),var(--champg2));
+    border:1px solid var(--accent);color:var(--txt);font-size:13px;
+    box-shadow:0 8px 22px -10px rgba(0,0,0,.7)}
+  body.scenario .scenbar{display:flex}
+  .scenbar .ico{font-size:19px;line-height:1}
+  .scenbar .txt{flex:1;line-height:1.32}
+  .scenbar .txt b{color:var(--accent)}
+  .scenbar .back{flex:0 0 auto;background:var(--accent);color:var(--accentink);border:0;
+    border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .scenbar .back:hover{filter:brightness(1.08)}
   .hide{display:none}
   .err{color:#ff7a7a}
   .heat{font-variant-numeric:tabular-nums;text-align:right;border-radius:4px}
@@ -229,6 +255,11 @@
   </div>
 
   <div id="out" class="hide">
+    <div class="scenbar" id="scenBar">
+      <span class="ico">🎲</span>
+      <span class="txt" id="scenTxt"></span>
+      <button class="back" id="scenBack">← Vis forventet</button>
+    </div>
     <div class="champ">
       <div class="trophy">🏆</div>
       <div style="flex:1">
@@ -438,6 +469,14 @@ function render(){
   $("#out").classList.remove("hide");
   const d = LAST;
   const single = MODE === "single";
+  // Recolour the whole UI (green "Forventet" → violet) + show the sticky banner so it's
+  // unmistakable that a single scenario is a hypothetical, not the expected outcome.
+  document.body.classList.toggle("scenario", single);
+  if(single){
+    $("#scenTxt").innerHTML = WIN_FOR
+      ? `Du ser et <b>scenarie</b> hvor ${esc(WIN_FOR)} vinder — ét muligt forløb, ikke det forventede udfald.`
+      : `Du ser et tilfældigt <b>scenarie</b> — ét muligt forløb, ikke det forventede udfald.`;
+  }
   const sampleBracket = single && SAMPLE ? SAMPLE.bracket : null;
   const scenario = single && SAMPLE ? SAMPLE.scores : null;
 
@@ -960,6 +999,8 @@ function renderRules(){
 }
 
 // events
+$("#scenBack").addEventListener("click", () =>       // banner shortcut back to the aggregate view
+  document.querySelector('.modebtn[data-mode="stats"]').click());
 document.querySelectorAll(".modebtn").forEach(b =>
   b.addEventListener("click", () => {
     if(b.dataset.mode === "single") reroll();   // clicking single (re-)rolls a scenario

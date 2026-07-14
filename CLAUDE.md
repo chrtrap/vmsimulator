@@ -91,6 +91,12 @@ uncapped, so any participant who wins ≥1 of the N sims has one. Powers the "Sc
 ## Frontend (index.html)
 - Mode toggle: **📊 Forventet** (10k aggregate) vs **🎲 Ny tilfældig turnering** (one random scenario from
   `samples`; clicking re-rolls). No N input / no Kør button.
+- **Scenario-mode theming:** single mode adds `body.scenario`, which recolours the whole UI green→**violet**
+  ("what-if", not the expected outcome) and shows a sticky banner (`.scenbar`, with a "← Vis forventet"
+  shortcut). Driven by CSS vars overridden on `body.scenario` (`--accent/--accent2/--accentink/--tint/
+  --accentrgb/--champg*`) — so any new accent-coloured element should use these tokens, not hardcoded
+  greens, to flip automatically. Played (`.match.real` ✓ Spillet) games intentionally stay green in both
+  modes (real result vs simulated).
 - Competition switcher Trap/Andreas. URL `?comp=trap` or `?comp=andreas` locks it (hides the switcher) —
   used to share a fixed view per group. The proper names **Trap/Andreas only appear on this switcher**
   (owner-only, hidden on locked links); they were stripped from all standings/points/notes so a viewer
