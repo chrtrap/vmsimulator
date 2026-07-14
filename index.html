@@ -461,7 +461,7 @@ function render(){
 
   renderBracket(d, sampleBracket);
   const winView = single && WIN_FOR;   // WIN_FOR only styles the view while a scenario is shown
-  $("#pathTitle").textContent = winView ? `Sådan kan ${WIN_FOR} vinde`
+  $("#pathTitle").textContent = winView ? `Et scenarie hvor ${WIN_FOR} vinder`
     : single ? "En mulig vej til finalen" : "Den mest sandsynlige vej til finalen";
   $("#pathNote").textContent = winView
     ? `Ét simuleret forløb hvor ${WIN_FOR} ender øverst i stillingen. Se Konkurrence-fanen for slutstillingen i netop dette scenarie.`
@@ -623,7 +623,13 @@ function renderPools(d, scenario){
     const isPrice = p.type === "price";
     if(scenario){                                   // single scenario: this run's standing
       const sc = scenario[k] || {};
-      const pr = p.rows.slice().sort((a,b)=>(sc[b.name]||0)-(sc[a.name]||0));
+      // Sort by the finishing order the engine computed for this scenario (points + the
+      // comp's tiebreakers), not raw points — so a tie is broken the same way the winner was.
+      const ord = SAMPLE && SAMPLE.order && SAMPLE.order[k];
+      const rankOf = ord ? Object.fromEntries(ord.map((nm,i)=>[nm,i])) : null;
+      const pr = p.rows.slice().sort((a,b)=> rankOf
+        ? (rankOf[a.name] ?? 1e9) - (rankOf[b.name] ?? 1e9)
+        : (sc[b.name]||0) - (sc[a.name]||0));
       return `<div class="panel pool"><h2>Stilling · dette scenarie</h2>
         ${pr.map((r,i)=>`<div class="pcard">
           <div class="phead">
@@ -679,7 +685,7 @@ function renderPools(d, scenario){
 function winScenLine(d, name){
   const has = d.win_scenarios && d.win_scenarios[capComp()] && d.win_scenarios[capComp()][name];
   return has
-    ? `<button class="winbtn" data-name="${esc(name)}">🏆 Sådan kan ${shortName(name)} vinde</button>`
+    ? `<button class="winbtn" data-name="${esc(name)}">🏆 Scenarie hvor ${shortName(name)} vinder</button>`
     : `<span class="nowin">Vandt ingen af simuleringerne</span>`;
 }
 

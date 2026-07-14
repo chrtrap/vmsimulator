@@ -121,6 +121,7 @@ def load_pots(path):
 PRICES = load_prices(os.path.join(HERE, "data", "prisliste.txt"))
 POTS = load_pots(os.path.join(HERE, "data", "trap_seeding.txt"))
 POOLS["Trap"]["pots"] = POTS   # enables the official Trap tiebreakers in the simulation
+POOLS["Andreas"]["prices"] = PRICES   # Andreas tiebreak: on equal points, lower total budget wins
 _all_teams = [str(t) for g in DATA[0] for t in g]
 _miss_p = [t for t in _all_teams if t not in PRICES]
 _miss_q = [t for t in _all_teams if t not in POTS]
@@ -340,9 +341,10 @@ def run_simulation(n, n_samples=0):
             rows.append(row)
         rows.sort(key=lambda r: r["xpts"], reverse=True)
 
-        # Current (realized) standing order, using the official tiebreakers (Trap only; Andreas by points).
+        # Current (realized) standing order (Trap: official tiebreakers; Andreas: points, then lower budget).
         pots_for = None if is_price else POTS
-        rkey = lambda nm: wc._pool_sort_key(POOLS[pn]["participants"][nm], real_src, pots_for, REAL_GF, REAL_GA)
+        prices_for = PRICES if is_price else None
+        rkey = lambda nm: wc._pool_sort_key(POOLS[pn]["participants"][nm], real_src, pots_for, REAL_GF, REAL_GA, prices_for)
         order_names = sorted([r["name"] for r in rows], key=rkey, reverse=True)
         rank_of = {nm: i + 1 for i, nm in enumerate(order_names)}
         for r in rows:

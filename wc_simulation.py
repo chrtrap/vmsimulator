@@ -98,16 +98,19 @@ ANDREAS_OPTIONS = {
 }
 
 
-def _pool_sort_key(teams, pts_map, pots=None, gf=None, ga=None):
+def _pool_sort_key(teams, pts_map, pots=None, gf=None, ga=None, prices=None):
     """Ranking key for a fantasy entry (higher tuple = better placement).
 
     Trap tiebreakers (official): total points, then points from the selected teams in
     pot 5, then pot 4, 3, 2, 1 (bottom-up), then goals scored, then fewest goals conceded.
     Final rule (drawing of lots) is left to stable ordering. With no `pots` (Andreas),
-    only the total is used."""
+    the total is used, then (if `prices` given) the lower total budget breaks the tie."""
     score = sum(pts_map.get(t, 0) for t in teams)
     if not pots:
-        return (score,)
+        key = (score,)
+        if prices is not None:   # Andreas: on equal points, the cheaper entry ranks higher
+            key += (-sum(prices.get(t, 0) for t in teams),)
+        return key
     by_pot = {}
     for t in teams:
         by_pot[pots.get(t)] = by_pot.get(pots.get(t), 0) + pts_map.get(t, 0)
@@ -594,6 +597,7 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
             last_bracket = sim_bracket
 
         sample_scores = {}
+        sample_order = {}  # pool -> participants in finishing order (winner first), incl. tiebreakers
         sim_winners = {}   # pool -> the participant who finished 1st in THIS sim
         if pools is not None:  # score each participant for THIS simulation, then rank
             sim_a = {t: andreas_points[t] - snap_a[t] for t in andreas_points}
@@ -602,8 +606,9 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
             for pn, pd in pools.items():
                 m = metric[pd['metric']]
                 pots = pd.get('pots')
+                prices = pd.get('prices')
                 parts = list(pd['participants'].items())
-                keys = [_pool_sort_key(teams, m, pots) for _, teams in parts]  # incl. tiebreakers
+                keys = [_pool_sort_key(teams, m, pots, prices=prices) for _, teams in parts]  # incl. tiebreakers
                 order = sorted(range(len(parts)), key=lambda i: keys[i], reverse=True)
                 for finish, i in enumerate(order):
                     name = parts[i][0]
@@ -615,11 +620,12 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
                     for b in range(a + 1, len(order)):
                         rowa[order[b]] += 1
                 sample_scores[pn] = {parts[i][0]: round(keys[i][0], 2) for i in range(len(parts))}
+                sample_order[pn] = [parts[i][0] for i in order]
                 sim_winners[pn] = parts[order[0]][0]
             # Stash the first sim each participant tops their pool — a concrete "how they win".
             if collect_paths and any(w not in win_scenarios[pn]
                                      for pn, w in sim_winners.items()):
-                scen = {'bracket': sim_bracket, 'scores': sample_scores,
+                scen = {'bracket': sim_bracket, 'scores': sample_scores, 'order': sample_order,
                         'team': {'andreas': {t: round(sim_a[t], 2) for t in sim_a},
                                  'trap': {t: round(sim_t[t], 2) for t in sim_t}}}
                 for pn, w in sim_winners.items():
@@ -627,7 +633,7 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
 
         # Keep this sim as a replayable scenario (bracket + this-sim points).
         if collect_paths and len(samples) < n_samples:
-            sample = {'bracket': sim_bracket, 'scores': sample_scores}
+            sample = {'bracket': sim_bracket, 'scores': sample_scores, 'order': sample_order}
             if pools is not None:   # per-team points earned in THIS scenario
                 sample['team'] = {'andreas': {t: round(sim_a[t], 2) for t in sim_a},
                                   'trap': {t: round(sim_t[t], 2) for t in sim_t}}
