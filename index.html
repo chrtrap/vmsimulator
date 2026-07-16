@@ -168,8 +168,10 @@
   .gres{display:flex;align-items:center;gap:9px;font-size:13px;padding:5px 2px;border-bottom:1px solid var(--line)}
   .gres:last-child{border-bottom:none}
   .gres .gdate{color:var(--dim);font-size:11px;width:46px;flex:0 0 46px;font-variant-numeric:tabular-nums}
-  .gres .gh{flex:1;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .gres .ga2{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gres .gh{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:.3em}
+  .gres .ga2{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-start;gap:.3em}
+  .gres .gnm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}  /* name truncates; flag stays */
+  .gres .flag{flex:0 0 auto;margin:0}  /* flag never shrinks (kept visible on narrow screens) */
   .gres .gsc{font-family:ui-monospace,Menlo,monospace;color:var(--gold);flex:0 0 auto;min-width:44px;text-align:center}
   .gres .gwin{color:var(--accent);font-weight:700}
   .gres .kdec{flex:0 0 54px;text-align:right}                 /* fixed slot: keeps rows aligned whether or not a decider tag shows */
@@ -436,7 +438,10 @@ const flagCode = t => {
 const fl = t => { const c = flagCode(t); return c ? `<img class="flag" src="flags/${c}.svg" alt="" loading="lazy">` : "🏳️"; };
 const da = t => (TEAM_DA[t] || t);
 const ft = t => `${fl(t)} ${da(t)}`;
-const ftr = t => `${da(t)} ${fl(t)}`;   // mirror: name then flag — for right-aligned (home) cells so the flag hugs the score
+// Result-list cells: flag pinned to the score side (home flag inside/right, away flag inside/left);
+// the name sits in a .gnm span that ellipsis-truncates, so the flag stays visible on narrow screens.
+const cellH = t => `<span class="gnm">${da(t)}</span>${fl(t)}`;
+const cellA = t => `${fl(t)}<span class="gnm">${da(t)}</span>`;
 // Danish number formatting: "." for thousands, "," for decimals (10.000 · 28,0%).
 const dk = x => Number(x).toLocaleString("da-DK");                       // natural decimals
 const dkf = (x, n) => Number(x).toLocaleString("da-DK",                  // fixed n decimals
@@ -915,9 +920,9 @@ function renderGroupsTab(d){
       return `<div class="gres">
         <span class="gdate">${dd}</span>
         <span class="gtag">Gr ${r.group}</span>
-        <span class="gh ${r.gh > r.ga ? "gwin" : ""}">${ftr(r.home)}</span>
+        <span class="gh ${r.gh > r.ga ? "gwin" : ""}">${cellH(r.home)}</span>
         <span class="gsc">${r.gh}–${r.ga}</span>
-        <span class="ga2 ${r.ga > r.gh ? "gwin" : ""}">${ft(r.away)}</span>
+        <span class="ga2 ${r.ga > r.gh ? "gwin" : ""}">${cellA(r.away)}</span>
       </div>`;
     }).join("");
     return `<div class="mdsec"><h3>Spilledag ${m}</h3>${rows}</div>`;
@@ -940,9 +945,9 @@ function renderKnockoutResults(d){
         const dec = g.decider !== "FT" ? `<span class="gtag">${deciderDa(g.decider)}</span>` : "";
         return `<div class="gres">
           <span class="gdate">${koDay(g.date)}</span>
-          <span class="gh ${g.winner === g.home ? "gwin" : ""}">${ftr(g.home)}</span>
+          <span class="gh ${g.winner === g.home ? "gwin" : ""}">${cellH(g.home)}</span>
           <span class="gsc">${g.gh}–${g.ga}</span>
-          <span class="ga2 ${g.winner === g.away ? "gwin" : ""}">${ft(g.away)}</span>
+          <span class="ga2 ${g.winner === g.away ? "gwin" : ""}">${cellA(g.away)}</span>
           <span class="kdec">${dec}</span>
         </div>`;
       }).join("");
@@ -960,12 +965,12 @@ function renderKnockoutResults(d){
       secs += `<div class="mdsec"><h3>Finale</h3>
         <div class="gres">
           <span class="gdate">${koDay(d.final_date)}</span>
-          <span class="gh">${ftr(w[0].team)}</span>
+          <span class="gh">${cellH(w[0].team)}</span>
           <span class="probbar" title="${esc(da(w[0].team))} ${dk(w[0].pct)}% · ${esc(da(w[1].team))} ${dk(w[1].pct)}%">
             <span class="pseg fav" style="width:${w[0].pct}%">${pl(w[0].pct)}</span>
             <span class="pseg dog" style="width:${w[1].pct}%">${pl(w[1].pct)}</span>
           </span>
-          <span class="ga2">${ft(w[1].team)}</span>
+          <span class="ga2">${cellA(w[1].team)}</span>
           <span class="kdec"><span class="gtag pred">Forudsagt</span></span>
         </div></div>`;
     }
