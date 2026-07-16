@@ -709,7 +709,7 @@ function renderPools(d, scenario){
         <div class="phead"><span class="prank">★</span>
           <span class="pname">${useReal ? "Optimalt hold (indtil nu)" : "Optimalt hold (forventet)"}</span>
           <span class="pxp">${dkf(o.xpts, pdec(!useReal))} ${useReal ? "point" : "xPoint"}</span>
-          <span class="pwin">${isPrice ? `pris ${o.cost}/${p.budget}` : 'bedst pr. pot'}</span>
+          <span class="pwin">${isPrice ? `pris ${o.cost}/${p.budget}` : 'bedst pr. lag'}</span>
         </div>
         <div class="chips">${o.teams.map(t=>tag(t,isPrice)).join("")}</div>
       </div>` : "";
