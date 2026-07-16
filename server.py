@@ -132,8 +132,23 @@ if _miss_q:
 print(f"Loaded {len(PRICES)} prices, {len(POTS)} pots.")
 
 # Realized points: deterministic, banked from matches actually played so far.
-KNOCKOUT = wc.load_knockout(os.path.join(HERE, "data", "knockout.csv"),
-                            team_names=[str(t) for t in DATA[0].flatten()])
+KO_PATH = os.path.join(HERE, "data", "knockout.csv")
+KNOCKOUT = wc.load_knockout(KO_PATH, team_names=[str(t) for t in DATA[0].flatten()])
+
+
+def scheduled_final_date():
+    """Date of the FINAL before it's played. Until a result is entered, the final's date
+    may sit in a commented placeholder row (`# FINAL,home,away,,,,,YYYY-MM-DD`); pull it so
+    the Knockout list can date the predicted final. Returns "" if not found."""
+    try:
+        with open(KO_PATH) as f:
+            for line in f:
+                parts = [p.strip() for p in line.lstrip("# ").rstrip().split(",")]
+                if parts and parts[0].upper() == "FINAL" and len(parts) >= 8 and parts[7]:
+                    return parts[7]
+    except OSError:
+        pass
+    return ""
 REAL_A, REAL_T, REAL_GF, REAL_GA, REAL_INFO = wc.realized_points(
     DATA[0], DATA[2], DATA[3], DATA[4], DATA[5], knockout=KNOCKOUT)
 # Deterministic group-stage tables (standings, dated results, 3rd-place ladder) for the
@@ -408,6 +423,7 @@ def run_simulation(n, n_samples=0):
         "group_standings": group_standings,   # Gruppespil: full standings + advance %
         "group_results": GROUP_DETAIL["results"],   # played group games, dated + matchday
         "knockout_results": knockout_results,        # played KO games, dated + round (Resultater list)
+        "final_date": scheduled_final_date(),         # date of the (as-yet unplayed) final, for the preview
         "thirds": thirds,                      # 3rd-place ladder for the best-8 cut
 
         "pools": pools_out,

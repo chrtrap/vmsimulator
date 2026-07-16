@@ -87,6 +87,8 @@ header shows `played + ko_played` as "kampe spillet")}, `champion`,
 andreas_real, trap_real), `rounds` (consensus bracket; each match may have `realized` {a,b,ga,gb,w,decider}),
 `stage_reach`, `groups`, `group_results`/`knockout_results` (played games, dated — `knockout_results`
 per game: {round (full phase name), home, away, gh, ga (final score incl. ET), decider, winner, date}),
+`final_date` (date of the not-yet-played final, read from the commented `# FINAL,…,date` placeholder
+by `scheduled_final_date()` — powers the predicted-final row in the Knockout list),
 `pools` {Trap, Andreas} (each: rows with xpts/real/win/last/exp_rank/pos/teams/real_rank/cost-or-pot,
 `optimal` (by xPts), `optimal_real` (by realized pts)), `samples` (≈200 scenarios: {bracket, scores:{pool:{participant:pts}}, order:{pool:[participants in finishing order, winner first — incl. tiebreakers, since `scores` is points-only]}, team:{andreas:{},trap:{}}}),
 `win_scenarios` {pool: {participant: one sample-shaped scenario — the first sim that participant finished 1st;
@@ -108,7 +110,10 @@ uncapped, so any participant who wins ≥1 of the N sims has one. Powers the "Sc
 - Tabs: **Knockout** (was "Vejen til finalen"; a **Turneringstræ/Resultater** sub-toggle (`.kview`,
   state `KO_VIEW`, default `tree`) — the bracket tree vs a dated list of played KO games grouped by
   round, rendered from the `knockout_results` payload by `renderKnockoutResults()` in the same row
-  format as the group Resultater; tree heading is "Den mest sandsynlige vej til finalen" in Forventet,
+  format as the group Resultater (fixed-width `.kdec` slot per row keeps columns aligned whether or
+  not a Forl./Straffe decider tag shows). Until the final is played, the list appends a **predicted
+  final** row (finalists + win% from the consensus Final slot's `winners`, dated by `final_date`,
+  tagged "Forudsagt"). Tree heading is "Den mest sandsynlige vej til finalen" in Forventet,
   "En mulig vej til finalen" in single. Connectors only (re)draw while the tree sub-view is visible),
   **Konkurrence** (pool standings, with Nuværende/Forventet
   sub-toggle; each standings row has a **"🏆 Scenarie hvor X vinder"** button that loads that participant's

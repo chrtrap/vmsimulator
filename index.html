@@ -172,6 +172,8 @@
   .gres .ga2{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .gres .gsc{font-family:ui-monospace,Menlo,monospace;color:var(--gold);flex:0 0 auto;min-width:44px;text-align:center}
   .gres .gwin{color:var(--accent);font-weight:700}
+  .gres .kdec{flex:0 0 54px;text-align:right}                 /* fixed slot: keeps rows aligned whether or not a decider tag shows */
+  .gtag.pred{color:var(--accent);border-color:var(--accent)} /* "Forudsagt" tag on the predicted final */
   .tfilter{display:flex;align-items:center;gap:6px;margin-bottom:11px;flex-wrap:wrap}
   .tfilter .flbl{color:var(--dim);font-size:12px;margin-right:2px}
   .potf{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer}
@@ -278,8 +280,8 @@
         <div class="tabs">
           <div class="tab active" data-v="pools">Konkurrence</div>
           <div class="tab" data-v="path">Knockout</div>
-          <div class="tab" data-v="stages">Slutspilsodds</div>
           <div class="tab" data-v="groups">Gruppespil</div>
+          <div class="tab" data-v="stages">Slutspilsodds</div>
         </div>
 
         <div class="view" id="v-path">
@@ -918,25 +920,43 @@ function renderGroupsTab(d){
 // group results but grouped by round; decider (Forl./Straffe) shown as a trailing tag.
 let KO_VIEW = "tree";   // Knockout sub-view: 'tree' (bracket, default) vs 'results' (dated list)
 const KO_ROUND_ORDER = ["Round of 32","Round of 16","Quarterfinals","Semifinals","Third Place Match","Final"];
+const koDay = s => s ? `${s.slice(8)}/${s.slice(5,7)}` : "";
 function renderKnockoutResults(d){
   const byR = {};
   (d.knockout_results || []).forEach(g => (byR[g.round] ??= []).push(g));
-  const secs = KO_ROUND_ORDER.filter(r => byR[r]).map(r => {
+  let secs = KO_ROUND_ORDER.filter(r => byR[r]).map(r => {
     const rows = byR[r].slice()
       .sort((x,y) => x.date < y.date ? -1 : x.date > y.date ? 1 : 0)
       .map(g => {
-        const dd = g.date ? `${g.date.slice(8)}/${g.date.slice(5,7)}` : "";
         const dec = g.decider !== "FT" ? `<span class="gtag">${deciderDa(g.decider)}</span>` : "";
         return `<div class="gres">
-          <span class="gdate">${dd}</span>
+          <span class="gdate">${koDay(g.date)}</span>
           <span class="gh ${g.winner === g.home ? "gwin" : ""}">${ft(g.home)}</span>
           <span class="gsc">${g.gh}–${g.ga}</span>
           <span class="ga2 ${g.winner === g.away ? "gwin" : ""}">${ft(g.away)}</span>
-          ${dec}
+          <span class="kdec">${dec}</span>
         </div>`;
       }).join("");
     return `<div class="mdsec"><h3>${ROUND_DA[r] || r}</h3>${rows}</div>`;
   }).join("");
+
+  // Predicted final: until the final is played, show the model's finalists + win% (the same
+  // numbers the tree shows on the Final slot). Replaced by the real result once it's entered.
+  if(!byR["Final"]){
+    const fin = (d.rounds || []).find(r => r.name === "Final");
+    const m = fin && fin.matches && fin.matches[0];
+    const w = m && !m.realized && m.winners;
+    if(w && w.length >= 2){
+      secs += `<div class="mdsec"><h3>Finale</h3>
+        <div class="gres">
+          <span class="gdate">${koDay(d.final_date)}</span>
+          <span class="gh gwin">${ft(w[0].team)}</span>
+          <span class="gsc">${dk(w[0].pct)}%–${dk(w[1].pct)}%</span>
+          <span class="ga2">${ft(w[1].team)}</span>
+          <span class="kdec"><span class="gtag pred">Forudsagt</span></span>
+        </div></div>`;
+    }
+  }
   $("#koResults").innerHTML = `<h2>Resultater</h2>${secs || '<p class="note">Ingen kampe spillet endnu.</p>'}`;
 }
 
