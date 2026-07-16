@@ -182,6 +182,19 @@ def optimal_trap(xpts):
     return {"teams": pick, "xpts": sum(xpts[t] for t in pick)}
 
 
+def round_keep_sum(raws, nd=1):
+    """Round each percentage to ``nd`` decimals so the rounded values still add up to the rounded
+    total (largest-remainder method). Without this, two complementary probabilities each rounded
+    on their own can show as 100.1%/99.9% (e.g. a final's 50.3% + 49.8%)."""
+    scale = 10 ** nd
+    scaled = [v * scale for v in raws]
+    floors = [int(x) for x in scaled]                    # pcts are >= 0, so int() == floor()
+    deficit = int(round(sum(scaled))) - sum(floors)
+    for i in sorted(range(len(scaled)), key=lambda i: scaled[i] - floors[i], reverse=True)[:max(0, deficit)]:
+        floors[i] += 1
+    return [f / scale for f in floors]
+
+
 def run_simulation(n, n_samples=0):
     groups, tpp, elo, td, fx, res = DATA
     t0 = time.time()
@@ -203,11 +216,11 @@ def run_simulation(n, n_samples=0):
     # loser of an already-played knockout game. This keeps long-shot survivors such as
     # Cape Verde on the list (pct 0.0, i.e. "<1/n") while dropping knocked-out teams.
     ko_losers = {ko["home"] if ko["winner"] == ko["away"] else ko["away"] for ko in KNOCKOUT}
-    alive = [t for t in extra["stage_reach"] if t not in ko_losers]
-    title_odds = sorted(
-        ({"team": str(t), "pct": round(winners.get(t, 0) / n * 100, 2)} for t in alive),
-        key=lambda r: (-r["pct"], r["team"]),
-    )
+    alive = sorted((t for t in extra["stage_reach"] if t not in ko_losers),
+                   key=lambda t: (-winners.get(t, 0), str(t)))
+    # Round to 1 decimal so the alive teams' title odds sum to exactly 100% (e.g. a two-horse final).
+    _tp = round_keep_sum([winners.get(t, 0) / n * 100 for t in alive], 1)
+    title_odds = [{"team": str(t), "pct": p} for t, p in zip(alive, _tp)]
     andreas_xpts = odds(andreas, "xpts")
     trap_xpts = odds(trap, "xpts")
 
@@ -277,14 +290,17 @@ def run_simulation(n, n_samples=0):
             pair = {a, b}                   # probability THIS exact pairing actually occurs
             mu_count = sum(c for k, c in mu.items() if set(k.split(" vs ")) == pair)
             realized = ko_real.get((frozenset((a, b)), rname)) if a and b else None
+            # Round the two shown teams' slot-win odds so they keep their combined total (= 100% when
+            # they're the only possible winners, e.g. a final after the semis are played).
+            _wt = [t for t in (first, second) if t]
+            _wp = round_keep_sum([wins.get(t, 0) / total * 100 for t in _wt], 1)
             matches.append({
                 "num": num,
                 "fav": first,
-                "fav_pct": round(wins.get(first, 0) / total * 100, 1),
+                "fav_pct": _wp[0] if _wp else 0,
                 "matchup": f"{first} vs {second}" if first and second else "",
                 "matchup_pct": round(mu_count / mu_total * 100, 1),
-                "winners": [{"team": t, "pct": round(wins.get(t, 0) / total * 100, 1)}
-                            for t in (first, second) if t],
+                "winners": [{"team": t, "pct": p} for t, p in zip(_wt, _wp)],
                 "realized": realized,
             })
         if matches:
