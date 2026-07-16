@@ -183,7 +183,6 @@
   /* Standings: "how this participant can win" button + muted note when they never won. */
   .winbtn{margin-top:9px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer}
   .winbtn:hover{color:var(--txt);border-color:var(--accent);background:var(--tint)}
-  .nowin{display:inline-block;margin-top:9px;color:var(--dim);font-size:12px;opacity:.6}
   /* Head-to-head grid + team-contribution bars in the Konkurrence analysis view. */
   th.hh{text-align:right}
   td.hhd{color:var(--dim);text-align:center}
@@ -719,13 +718,14 @@ function renderPools(d, scenario){
     b.addEventListener("click", () => showWinScenario(b.dataset.name)));
 }
 
-// Standings row footer: a button that loads this participant's saved winning scenario,
-// or a muted note if they never topped their pool across the simulated tournaments.
+// Standings row footer: a button that loads this participant's saved winning scenario.
+// If they never topped their pool across the simulated tournaments, show nothing —
+// the absent button is itself the signal that they can't (realistically) win.
 function winScenLine(d, name){
   const has = d.win_scenarios && d.win_scenarios[capComp()] && d.win_scenarios[capComp()][name];
   return has
     ? `<button class="winbtn" data-name="${esc(name)}">🏆 Scenarie hvor ${shortName(name)} vinder</button>`
-    : `<span class="nowin">Vandt ingen af simuleringerne</span>`;
+    : "";
 }
 
 let POOL_VIEW = "table";    // 'table' = standings, 'matrix' = analysis (matrix/h2h/contribution)
