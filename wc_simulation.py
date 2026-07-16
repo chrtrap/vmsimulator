@@ -723,6 +723,7 @@ def load_knockout(path, team_names=None):
                 'et': score(row.get('et')),
                 'decider': (row.get('decider') or 'FT').strip().upper(),
                 'winner': (row.get('winner') or '').strip(),
+                'date': (row.get('date') or '').strip(),
             })
 
     if team_names is not None:

@@ -177,9 +177,9 @@
   .potf{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer}
   .potf:hover{color:var(--txt)}
   .potf.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
-  .psort,.pview,.cbasis,.gview,.pickf{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 13px;font-size:12.5px;cursor:pointer}
-  .psort:hover,.pview:hover,.cbasis:hover,.gview:hover,.pickf:hover{color:var(--txt)}
-  .psort.active,.pview.active,.cbasis.active,.gview.active,.pickf.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
+  .psort,.pview,.cbasis,.gview,.pickf,.kview{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 13px;font-size:12.5px;cursor:pointer}
+  .psort:hover,.pview:hover,.cbasis:hover,.gview:hover,.pickf:hover,.kview:hover{color:var(--txt)}
+  .psort.active,.pview.active,.cbasis.active,.gview.active,.pickf.active,.kview.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
   /* Standings: "how this participant can win" button + muted note when they never won. */
   .winbtn{margin-top:9px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer}
   .winbtn:hover{color:var(--txt);border-color:var(--accent);background:var(--tint)}
@@ -277,17 +277,23 @@
       <div>
         <div class="tabs">
           <div class="tab active" data-v="pools">Konkurrence</div>
-          <div class="tab" data-v="path">Vejen til finalen</div>
+          <div class="tab" data-v="path">Knockout</div>
           <div class="tab" data-v="stages">Slutspilsodds</div>
           <div class="tab" data-v="groups">Gruppespil</div>
         </div>
 
         <div class="view" id="v-path">
-          <div class="panel">
+          <div class="tfilter" id="koView">
+            <span class="flbl">Visning</span>
+            <span class="kview active" data-kview="tree">Turneringstræ</span>
+            <span class="kview" data-kview="results">Resultater</span>
+          </div>
+          <div class="panel" id="koTree">
             <h2 id="pathTitle">Den mest sandsynlige vej til finalen</h2>
             <div class="bracket" id="bracket"></div>
             <p class="note" id="pathNote"></p>
           </div>
+          <div class="panel" id="koResults" style="display:none"></div>
         </div>
 
         <div class="view active" id="v-pools">
@@ -534,6 +540,7 @@ function render(){
   if(pv === "matrix") renderInsights(d); else renderPools(d, scenario);
   renderStages(d);
   renderGroupsTab(d);
+  renderKnockoutResults(d);
   renderTeams();
   renderRules();
 
@@ -907,6 +914,32 @@ function renderGroupsTab(d){
   $("#gResults").innerHTML = `<h2>Resultater</h2>${md || '<p class="note">Ingen kampe spillet endnu.</p>'}`;
 }
 
+// Knockout "Resultater" list: played KO games (d.knockout_results), same row format as the
+// group results but grouped by round; decider (Forl./Straffe) shown as a trailing tag.
+let KO_VIEW = "tree";   // Knockout sub-view: 'tree' (bracket, default) vs 'results' (dated list)
+const KO_ROUND_ORDER = ["Round of 32","Round of 16","Quarterfinals","Semifinals","Third Place Match","Final"];
+function renderKnockoutResults(d){
+  const byR = {};
+  (d.knockout_results || []).forEach(g => (byR[g.round] ??= []).push(g));
+  const secs = KO_ROUND_ORDER.filter(r => byR[r]).map(r => {
+    const rows = byR[r].slice()
+      .sort((x,y) => x.date < y.date ? -1 : x.date > y.date ? 1 : 0)
+      .map(g => {
+        const dd = g.date ? `${g.date.slice(8)}/${g.date.slice(5,7)}` : "";
+        const dec = g.decider !== "FT" ? `<span class="gtag">${deciderDa(g.decider)}</span>` : "";
+        return `<div class="gres">
+          <span class="gdate">${dd}</span>
+          <span class="gh ${g.winner === g.home ? "gwin" : ""}">${ft(g.home)}</span>
+          <span class="gsc">${g.gh}–${g.ga}</span>
+          <span class="ga2 ${g.winner === g.away ? "gwin" : ""}">${ft(g.away)}</span>
+          ${dec}
+        </div>`;
+      }).join("");
+    return `<div class="mdsec"><h3>${ROUND_DA[r] || r}</h3>${rows}</div>`;
+  }).join("");
+  $("#koResults").innerHTML = `<h2>Resultater</h2>${secs || '<p class="note">Ingen kampe spillet endnu.</p>'}`;
+}
+
 let TRAP_POT = "all";
 let TEAMS_PICKED = "all";   // Holdpoint filter: 'all' teams vs 'picked' (only teams a participant selected)
 const SORT = {trap:{col:"trap", dir:-1}, andreas:{col:"andreas", dir:-1}};
@@ -1036,13 +1069,23 @@ document.querySelectorAll(".tab").forEach(t =>
     t.classList.add("active");
     $("#v-"+t.dataset.v).classList.add("active");
     // Bracket connectors need a visible (laid-out) container to measure, so draw on open.
-    if(t.dataset.v === "path") requestAnimationFrame(() => drawConnectors($("#bracket")));
+    if(t.dataset.v === "path" && KO_VIEW === "tree") requestAnimationFrame(() => drawConnectors($("#bracket")));
+  }));
+// Knockout sub-toggle: Turneringstræ (bracket) vs Resultater (dated list). Redraw the
+// bracket connectors when the tree becomes visible again (they need a laid-out container).
+document.querySelectorAll(".kview").forEach(b =>
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".kview").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); KO_VIEW = b.dataset.kview;
+    $("#koTree").style.display    = KO_VIEW === "tree" ? "" : "none";
+    $("#koResults").style.display = KO_VIEW === "results" ? "" : "none";
+    if(KO_VIEW === "tree") requestAnimationFrame(() => drawConnectors($("#bracket")));
   }));
 let _bkResize;
 window.addEventListener("resize", () => {
   clearTimeout(_bkResize);
   _bkResize = setTimeout(() => {
-    if($("#v-path").classList.contains("active")) drawConnectors($("#bracket"));
+    if($("#v-path").classList.contains("active") && KO_VIEW === "tree") drawConnectors($("#bracket"));
   }, 150);
 });
 document.querySelectorAll(".potf").forEach(b =>

@@ -85,7 +85,9 @@ team names are stored internally in **English** and translated for display.
 header shows `played + ko_played` as "kampe spillet")}, `champion`,
 `title_odds`, `andreas_xpts`, `trap_xpts`, `teams` (per team: pot, price, andreas, trap,
 andreas_real, trap_real), `rounds` (consensus bracket; each match may have `realized` {a,b,ga,gb,w,decider}),
-`stage_reach`, `groups`, `pools` {Trap, Andreas} (each: rows with xpts/real/win/last/exp_rank/pos/teams/real_rank/cost-or-pot,
+`stage_reach`, `groups`, `group_results`/`knockout_results` (played games, dated — `knockout_results`
+per game: {round (full phase name), home, away, gh, ga (final score incl. ET), decider, winner, date}),
+`pools` {Trap, Andreas} (each: rows with xpts/real/win/last/exp_rank/pos/teams/real_rank/cost-or-pot,
 `optimal` (by xPts), `optimal_real` (by realized pts)), `samples` (≈200 scenarios: {bracket, scores:{pool:{participant:pts}}, order:{pool:[participants in finishing order, winner first — incl. tiebreakers, since `scores` is points-only]}, team:{andreas:{},trap:{}}}),
 `win_scenarios` {pool: {participant: one sample-shaped scenario — the first sim that participant finished 1st;
 uncapped, so any participant who wins ≥1 of the N sims has one. Powers the "Scenarie hvor X vinder" button}}.
@@ -103,13 +105,18 @@ uncapped, so any participant who wins ≥1 of the N sims has one. Powers the "Sc
   used to share a fixed view per group. The proper names **Trap/Andreas only appear on this switcher**
   (owner-only, hidden on locked links); they were stripped from all standings/points/notes so a viewer
   who only knows one comp never sees the other's name.
-- Tabs: **Vejen til titlen** (bracket; heading is "Den mest sandsynlige vej til titlen" in Forventet,
-  "En mulig vej til titlen" in single), **Konkurrence** (pool standings, with Nuværende/Forventet
+- Tabs: **Knockout** (was "Vejen til finalen"; a **Turneringstræ/Resultater** sub-toggle (`.kview`,
+  state `KO_VIEW`, default `tree`) — the bracket tree vs a dated list of played KO games grouped by
+  round, rendered from the `knockout_results` payload by `renderKnockoutResults()` in the same row
+  format as the group Resultater; tree heading is "Den mest sandsynlige vej til finalen" in Forventet,
+  "En mulig vej til finalen" in single. Connectors only (re)draw while the tree sub-view is visible),
+  **Konkurrence** (pool standings, with Nuværende/Forventet
   sub-toggle; each standings row has a **"🏆 Scenarie hvor X vinder"** button that loads that participant's
   saved `win_scenarios` scenario into the single view and jumps to the bracket — `WIN_FOR` holds the name
   while shown and restyles the path title ("Et scenarie hvor X vinder") / note; the single-scenario standing
   is ordered by the sample's `order` (engine finishing order incl. tiebreakers), not raw points, so a
-  points tie is broken the same way the winner was; rows for anyone who never won show a muted note),
+  points tie is broken the same way the winner was; participants who never topped their pool show no
+  win button at all — its absence is the signal they can't win),
   **Forventede holdpoint** (per-team; shows scenario points in single mode), **Runde-odds**
   (stage reach), **Grupper** (group standings), **Regler** (per-comp scoring; `renderRules()` mirrors
   `trap_points`/`andreas_points` exactly — keep the two in sync if scoring ever changes).
@@ -137,11 +144,12 @@ Header `round,home,away,reg,et,decider,winner,date` must stay first; `#` lines i
 `reg`: 90′ score "h-a". `et`: extra-time goals "h-a" (blank if none). `decider`: FT/ET/P.
 `winner`: required (for P the reg+et score is a draw). eloratings logs penalty games as draws and
 omits ET/P — that's why this file exists alongside the group `results.tsv`.
-`date`: `YYYY-MM-DD` the match was played — currently ignored by `load_knockout` (parses by header,
-drops unknown cols); it exists to drive the planned "over tid" timeline. Filled with **official
-eloratings match dates** taken from `data/2026_World_Cup_latest.tsv` (a dated results dump — used
-for DATES ONLY, since eloratings omits ET/P and logs penalties as draws; scores/deciders stay
-hand-written here). The FINAL (2026-07-19) sits as a commented placeholder until it's played.
+`date`: `YYYY-MM-DD` the match was played. `load_knockout` now keeps it on each pin dict (sim logic
+ignores it); it powers the `knockout_results` payload list (Knockout → Resultater view) and the
+planned "over tid" timeline. Filled with **official eloratings match dates** taken from
+`data/2026_World_Cup_latest.tsv` (a dated results dump — used for DATES ONLY, since eloratings omits
+ET/P and logs penalties as draws; scores/deciders stay hand-written here). The FINAL (2026-07-19)
+sits as a commented placeholder until it's played.
 **Keep `date` LAST (or at least not first):** the comment-skip tests the *first* column for a
 leading `#`, so putting `date` first makes the `#   R32,Mexico,…,<date>` example rows parse as real
 pins (33 instead of 30).

@@ -212,6 +212,17 @@ def run_simulation(n, n_samples=0):
                 "ga": ko["reg"][0] + ko["et"][0], "gb": ko["reg"][1] + ko["et"][1],
                 "w": ko["winner"], "decider": _DEC.get(ko["decider"], "FT"),
             }
+    # Flat list of played knockout games (dated) for the Knockout "Resultater" list view —
+    # same shape as group_results (gh/ga = final score incl. extra time), round = full phase
+    # name so the frontend's ROUND_DA maps it. Includes the bronze match.
+    knockout_results = [
+        {"round": _PHASE.get(ko["round"], ko["round"]),
+         "home": ko["home"], "away": ko["away"],
+         "gh": ko["reg"][0] + ko["et"][0], "ga": ko["reg"][1] + ko["et"][1],
+         "decider": _DEC.get(ko["decider"], "FT"),
+         "winner": ko["winner"], "date": ko.get("date", "")}
+        for ko in KNOCKOUT
+    ]
 
     # Build ONE internally-consistent consensus bracket by propagating each slot's
     # most-likely winner forward. Aggregating every slot independently (the old way)
@@ -396,6 +407,7 @@ def run_simulation(n, n_samples=0):
         "groups": group_tables,
         "group_standings": group_standings,   # Gruppespil: full standings + advance %
         "group_results": GROUP_DETAIL["results"],   # played group games, dated + matchday
+        "knockout_results": knockout_results,        # played KO games, dated + round (Resultater list)
         "thirds": thirds,                      # 3rd-place ladder for the best-8 cut
 
         "pools": pools_out,
