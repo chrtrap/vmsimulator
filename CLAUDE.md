@@ -112,8 +112,10 @@ uncapped, so any participant who wins ≥1 of the N sims has one. Powers the "Sc
   round, rendered from the `knockout_results` payload by `renderKnockoutResults()` in the same row
   format as the group Resultater (fixed-width `.kdec` slot per row keeps columns aligned whether or
   not a Forl./Straffe decider tag shows). Until the final is played, the list appends a **predicted
-  final** row (finalists + win% from the consensus Final slot's `winners`, dated by `final_date`,
-  tagged "Forudsagt"). Tree heading is "Den mest sandsynlige vej til finalen" in Forventet,
+  final** row (finalists + win% from the consensus Final slot's `winners`, shown as a split
+  probability bar `.probbar`, dated by `final_date`; the right slot shows the matchup probability
+  `matchup_pct` only when the pairing isn't yet certain (<99.5%, e.g. before the semis) — nothing for
+  a locked final). Tree heading is "Den mest sandsynlige vej til finalen" in Forventet,
   "En mulig vej til finalen" in single. Connectors only (re)draw while the tree sub-view is visible),
   **Konkurrence** (pool standings, with Nuværende/Forventet
   sub-toggle; each standings row has a **"🏆 Scenarie hvor X vinder"** button that loads that participant's

@@ -177,7 +177,6 @@
   .gres .gsc{font-family:ui-monospace,Menlo,monospace;color:var(--gold);flex:0 0 auto;min-width:44px;text-align:center}
   .gres .gwin{color:var(--accent);font-weight:700}
   .gres .kdec{flex:0 0 54px;text-align:right}                 /* fixed slot: keeps rows aligned whether or not a decider tag shows */
-  .gtag.pred{color:var(--accent);border-color:var(--accent)} /* "Forudsagt" tag on the predicted final */
   /* Predicted (unplayed) match: a split win-probability bar — deliberately NOT the gold goal-score
      style, so odds read as odds. Favourite = solid accent, underdog = translucent accent. Built to
      take a 3rd segment later (1/X/2). */
@@ -973,7 +972,7 @@ function renderKnockoutResults(d){
             <span class="pseg dog" style="width:${w[1].pct}%">${pl(w[1].pct)}</span>
           </span>
           <span class="ga2">${cellA(w[1].team)}</span>
-          <span class="kdec"><span class="gtag pred">Forudsagt</span></span>
+          <span class="kdec">${m.matchup_pct < 99.5 ? `<span class="gtag" title="Sandsynlighed for netop denne kamp">${dk(m.matchup_pct)}%</span>` : ""}</span>
         </div></div>`;
     }
   }
