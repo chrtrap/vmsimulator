@@ -781,7 +781,7 @@ function renderInsights(d){
   const cbReal = CONTRIB_BASIS === "real";
   const cdec = cbReal ? pdec(false) : pdec(true);
   const unit = cbReal ? "point" : "xPoint";
-  const isPot = p.type === "pot";   // Trap squads share the same pot make-up (2·P1, P2..P5)
+  const isPot = p.type === "pot";   // Trap squads share the same pot make-up (2·L1, L2..L5)
   const tv = {}; (d.teams||[]).forEach(t => tv[t.team] =
     (COMP==="andreas" ? (cbReal?t.andreas_real:t.andreas) : (cbReal?t.trap_real:t.trap)) || 0);
   const crows = rows.map(r=>{
@@ -804,10 +804,10 @@ function renderInsights(d){
             r.segs.map((s,i)=>`<span class="cseg" style="height:${(r.total>0?s.val/r.total*100:0).toFixed(1)}%;background:${segColor(i,r.segs.length)}" title="${esc(da(s.team))}: ${dkf(s.val,cdec)} ${unit}"></span>`).join("")}</div>
         </div>
         <div class="cname" title="${esc(r.name)}">${shortName(r.name)}</div>
-        <div class="clegend">${r.segs.map((s,i)=>`<span class="cleg" title="${esc(da(s.team))}"><span class="cbdot" style="background:${segColor(i,r.segs.length)}"></span>${isPot?`<span class="cbpot">P${s.pot}</span> `:""}${fl(s.team)} ${dkf(s.val,cdec)}</span>`).join("")}</div>
+        <div class="clegend">${r.segs.map((s,i)=>`<span class="cleg" title="${esc(da(s.team))}"><span class="cbdot" style="background:${segColor(i,r.segs.length)}"></span>${isPot?`<span class="cbpot">L${s.pot}</span> `:""}${fl(s.team)} ${dkf(s.val,cdec)}</span>`).join("")}</div>
       </div>`).join("")}
     </div>
-    <p class="note">Søjlens højde = ${cbReal?'realiserede':'forventede'} slutpoint i alt; hvert farvet felt = ét holds bidrag${isPot?' (stablet nedefra efter pulje P1→P5)':''}.</p></div>`;
+    <p class="note">Søjlens højde = ${cbReal?'realiserede':'forventede'} slutpoint i alt; hvert farvet felt = ét holds bidrag${isPot?' (stablet nedefra efter lag L1→L5)':''}.</p></div>`;
 
   $("#poolMatrix").innerHTML = matrix + h2h + contrib;
   $("#poolMatrix").querySelectorAll(".cbasis").forEach(b =>
@@ -1002,8 +1002,10 @@ function renderRules(){
         + `<li>Færrest indkasserede mål (uden forlænget spilletid)</li>`
         + `<li>Lodtrækning</li></ol></div>`
       + `<div class="rsec"><h3>Identisk udvælgelse</h3>`
-        + `<p class="rtext">Ved helt ens holdvalg afgøres rækkefølgen af et ekstra "tiebreaker-hold". `
-        + `Point herfra tæller kun ved identisk udvælgelse.</p></div>`;
+        + `<p class="rtext">Ved helt ens holdvalg vælger de involverede deltagere et ekstra "tiebreaker-hold", `
+        + `der afgør deres indbyrdes rækkefølge. Er der stadig lighed, vælges et nyt tiebreaker-hold, indtil ingen `
+        + `længere har identisk holdvalg. Point fra tiebreaker-hold tæller kun med til denne indbyrdes afgørelse — `
+        + `ikke i den samlede stilling.</p></div>`;
   } else {
     html =
       `<div class="rmeta">${stat("Antal hold","4 hold")}${stat("Budget","1300")}</div>`
