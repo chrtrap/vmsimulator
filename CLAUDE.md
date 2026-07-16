@@ -68,6 +68,8 @@ team names are stored internally in **English** and translated for display.
 - **Two competitions:**
   - **Trap:** pick 6 teams (2 from pot 1, 1 each pots 2–5), scored with `trap_points`.
     Tiebreakers (official): total → points from pot 5 → pot 4→3→2→1 → goals scored → fewest conceded → lots.
+    *Internally the pot is `pot` (1–5); the **UI displays it in Danish as "Lag" / L1–L5** ("seedningslag"
+    spelled out in the Regler/notes prose) — Trap-only, since Andreas is priced not seeded.*
   - **Andreas:** pick 4 teams, total price ≤ 1300, scored with `andreas_points`.
     Tiebreaker: total → **lower total budget** (unofficial, maintainer's own rule — do NOT surface it in
     the UI). Wired via `POOLS["Andreas"]["prices"] = PRICES` → the `prices` arg of `_pool_sort_key`.
@@ -130,11 +132,19 @@ uncapped, so any participant who wins ≥1 of the N sims has one. Powers the "Sc
   Adding a team: add its `FLAG` emoji **and** drop the matching `flags/<cc>.svg` in.
 
 ## `knockout.csv` format
-Header `round,home,away,reg,et,decider,winner` must stay first; `#` lines ignored.
+Header `round,home,away,reg,et,decider,winner,date` must stay first; `#` lines ignored.
 `round`: R32/R16/QF/SF/FINAL/BRONZE. `home,away`: English names exactly as in `groups.txt`.
 `reg`: 90′ score "h-a". `et`: extra-time goals "h-a" (blank if none). `decider`: FT/ET/P.
 `winner`: required (for P the reg+et score is a draw). eloratings logs penalty games as draws and
 omits ET/P — that's why this file exists alongside the group `results.tsv`.
+`date`: `YYYY-MM-DD` the match was played — currently ignored by `load_knockout` (parses by header,
+drops unknown cols); it exists to drive the planned "over tid" timeline. Filled with **official
+eloratings match dates** taken from `data/2026_World_Cup_latest.tsv` (a dated results dump — used
+for DATES ONLY, since eloratings omits ET/P and logs penalties as draws; scores/deciders stay
+hand-written here). The FINAL (2026-07-19) sits as a commented placeholder until it's played.
+**Keep `date` LAST (or at least not first):** the comment-skip tests the *first* column for a
+leading `#`, so putting `date` first makes the `#   R32,Mexico,…,<date>` example rows parse as real
+pins (33 instead of 30).
 
 ## Conventions
 - Commit messages end with: `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.

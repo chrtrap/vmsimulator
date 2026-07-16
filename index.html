@@ -177,9 +177,9 @@
   .potf{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer}
   .potf:hover{color:var(--txt)}
   .potf.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
-  .psort,.pview,.cbasis,.gview{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 13px;font-size:12.5px;cursor:pointer}
-  .psort:hover,.pview:hover,.cbasis:hover,.gview:hover{color:var(--txt)}
-  .psort.active,.pview.active,.cbasis.active,.gview.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
+  .psort,.pview,.cbasis,.gview,.pickf{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 13px;font-size:12.5px;cursor:pointer}
+  .psort:hover,.pview:hover,.cbasis:hover,.gview:hover,.pickf:hover{color:var(--txt)}
+  .psort.active,.pview.active,.cbasis.active,.gview.active,.pickf.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
   /* Standings: "how this participant can win" button + muted note when they never won. */
   .winbtn{margin-top:9px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer}
   .winbtn:hover{color:var(--txt);border-color:var(--accent);background:var(--tint)}
@@ -304,13 +304,18 @@
             <span class="psort" data-by="xpts">Forventet</span>
           </div>
           <div class="tfilter" id="potFilter" style="display:none">
-            <span class="flbl">Pot</span>
+            <span class="flbl">Lag</span>
             <span class="potf active" data-pot="all">Alle</span>
-            <span class="potf" data-pot="1">1</span>
-            <span class="potf" data-pot="2">2</span>
-            <span class="potf" data-pot="3">3</span>
-            <span class="potf" data-pot="4">4</span>
-            <span class="potf" data-pot="5">5</span>
+            <span class="potf" data-pot="1">L1</span>
+            <span class="potf" data-pot="2">L2</span>
+            <span class="potf" data-pot="3">L3</span>
+            <span class="potf" data-pot="4">L4</span>
+            <span class="potf" data-pot="5">L5</span>
+          </div>
+          <div class="tfilter" id="pickedFilter" style="display:none">
+            <span class="flbl">Hold</span>
+            <span class="pickf active" data-picked="all">Alle</span>
+            <span class="pickf" data-picked="picked">Kun valgte</span>
           </div>
           <div id="pools"></div>
           <div id="poolMatrix" style="display:none"></div>
@@ -520,6 +525,7 @@ function render(){
   });
   $("#poolSort").style.display   = (pv === "table" && !single) ? "flex" : "none";
   $("#potFilter").style.display  = (pv === "teams" && COMP === "trap") ? "flex" : "none";
+  $("#pickedFilter").style.display = (pv === "teams") ? "flex" : "none";
   $("#pools").style.display      = (pv === "table") ? "" : "none";
   $("#poolMatrix").style.display = (pv === "matrix") ? "" : "none";
   $("#poolTeams").style.display  = (pv === "teams") ? "" : "none";
@@ -652,7 +658,7 @@ function renderPools(d, scenario){
     ? new Set(d.title_odds.map(r => r.team)) : null;
   const tag = (t, isPrice) => {
     const elim = aliveSet && !aliveSet.has(t.team);
-    const val = isPrice ? `$${t.price}` : `P${t.pot}`;
+    const val = isPrice ? `$${t.price}` : `L${t.pot}`;   // Trap: seedningslag L1–L5
     return `<span class="chip${isPrice ? "" : " po"}${elim ? " elim" : ""}">`
       + `${fl(t.team)} <span class="cn">${da(t.team)}</span> <b>${val}</b></span>`;
   };
@@ -902,9 +908,12 @@ function renderGroupsTab(d){
 }
 
 let TRAP_POT = "all";
+let TEAMS_PICKED = "all";   // Holdpoint filter: 'all' teams vs 'picked' (only teams a participant selected)
 const SORT = {trap:{col:"trap", dir:-1}, andreas:{col:"andreas", dir:-1}};
 function cell(r,c){
   if(c.k==="team") return ft(r.team);
+  if(c.k==="pick") return r.pick ? `${r.pick} (${dk(r.pickPct)}%)` : "–";
+  if(c.k==="pot")  return r.pot != null ? `L${r.pot}` : "–";   // Trap: seedningslag L1–L5
   const v=r[c.k];
   if(v==null) return "–";
   return c.d!=null ? dkf(v, c.d) : v;
@@ -919,25 +928,35 @@ function renderTeams(){
   $("#teamsNote").textContent = single
     ? "Point hvert hold ville give i netop dette scenarie (tryk 🎲 for et nyt). Vælg 📊 Forventet for gennemsnittet over alle simuleringer."
     : (isTrap
-        ? "Pot = seedningslag. Point = realiserede point indtil nu · xPoint = forventede slutpoint. Klik på en kolonne for at sortere; filtrér på pot."
-        : "Pris = budgetomkostning. Point = realiserede point indtil nu · xPoint = forventede slutpoint. Klik på en kolonne for at sortere.");
+        ? "Lag = seedningslag (L1 = bedste lag). Point = realiserede point indtil nu · xPoint = forventede slutpoint · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere; filtrér på lag eller kun valgte hold."
+        : "Pris = budgetomkostning. Point = realiserede point indtil nu · xPoint = forventede slutpoint · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere; filtrér evt. til kun valgte hold.");
 
-  let rows = LAST.teams.slice();
+  // Pick popularity: how many participants in the current competition picked each team
+  // (and what share — 100% = everyone). Counted across the pool's roster rows.
+  const prows = (LAST.pools && LAST.pools[capComp()] && LAST.pools[capComp()].rows) || [];
+  const nPart = prows.length;
+  const pickCnt = {};
+  prows.forEach(p => (p.teams||[]).forEach(t => { const k = t.team||t; pickCnt[k] = (pickCnt[k]||0) + 1; }));
+
+  let rows = LAST.teams.slice().map(r => ({...r,
+    pick: pickCnt[r.team] || 0,
+    pickPct: nPart ? Math.round((pickCnt[r.team] || 0) / nPart * 100) : 0}));
   if(isTrap && TRAP_POT !== "all") rows = rows.filter(r => String(r.pot) === TRAP_POT);
+  if(TEAMS_PICKED === "picked") rows = rows.filter(r => r.pick > 0);
 
   let cols, sort, clickable;
   if(single){
     const sc = SAMPLE.team[metric] || {};
     rows = rows.map(r => ({...r, scen: sc[r.team] ?? 0}));
     cols = isTrap
-      ? [{k:"team",l:"Hold"},{k:"pot",l:"Pot",n:1},{k:"scen",l:"Point",n:1,d:2}]
-      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"scen",l:"Point",n:1,d:0}];
+      ? [{k:"team",l:"Hold"},{k:"pot",l:"Lag",n:1},{k:"scen",l:"Point",n:1,d:2},{k:"pick",l:"Valgt af",n:1}]
+      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"scen",l:"Point",n:1,d:0},{k:"pick",l:"Valgt af",n:1}];
     rows.sort((a,b)=>b.scen-a.scen);
     sort = {col:"scen", dir:-1}; clickable = false;
   } else {
     cols = isTrap
-      ? [{k:"team",l:"Hold"},{k:"pot",l:"Pot",n:1},{k:"trap_real",l:"Point",n:1,d:2},{k:"trap",l:"xPoint",n:1,d:2}]
-      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"andreas_real",l:"Point",n:1,d:0},{k:"andreas",l:"xPoint",n:1,d:2}];
+      ? [{k:"team",l:"Hold"},{k:"pot",l:"Lag",n:1},{k:"trap_real",l:"Point",n:1,d:2},{k:"trap",l:"xPoint",n:1,d:2},{k:"pick",l:"Valgt af",n:1}]
+      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"andreas_real",l:"Point",n:1,d:0},{k:"andreas",l:"xPoint",n:1,d:2},{k:"pick",l:"Valgt af",n:1}];
     sort = SORT[metric];
     const {col,dir} = sort;
     rows.sort((a,b)=>{const x=a[col],y=b[col];
@@ -970,7 +989,7 @@ function renderRules(){
   let html;
   if(COMP === "trap"){
     html =
-      `<div class="rmeta">${stat("Antal hold","6 hold")}${stat("Sammensætning","2 hold fra pot 1 og ét fra hver af pot 2, 3, 4 og 5")}</div>`
+      `<div class="rmeta">${stat("Antal hold","6 hold")}${stat("Sammensætning","2 hold fra seedningslag 1 og ét fra hver af seedningslag 2, 3, 4 og 5")}</div>`
       + sec("Gruppespil",
           rule("Sejr","+3") + rule("Uafgjort","+1") + rule("9 point i gruppen (3 sejre)","+0,5"))
       + sec("Knockout",
@@ -978,7 +997,7 @@ function renderRules(){
           + rule("Sejr i straffesparkskonkurrence","+1,5") + rule("Tab efter forlænget/straffe","+1"))
       + sec("Bonus", rule("Sejr med mindst 4 måls forskel (inkl. forlænget)","+0,5"))
       + `<div class="rsec"><h3>Pointlighed</h3><ol class="rlist">`
-        + `<li>Flest point fra hold i pot 5 (derefter pot 4, 3, 2, 1)</li>`
+        + `<li>Flest point fra hold i seedningslag 5 (derefter 4, 3, 2, 1)</li>`
         + `<li>Flest scorede mål (uden forlænget spilletid)</li>`
         + `<li>Færrest indkasserede mål (uden forlænget spilletid)</li>`
         + `<li>Lodtrækning</li></ol></div>`
@@ -1028,6 +1047,11 @@ document.querySelectorAll(".potf").forEach(b =>
   b.addEventListener("click", () => {
     document.querySelectorAll(".potf").forEach(x=>x.classList.remove("active"));
     b.classList.add("active"); TRAP_POT = b.dataset.pot; renderTeams();
+  }));
+document.querySelectorAll(".pickf").forEach(b =>
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".pickf").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); TEAMS_PICKED = b.dataset.picked; renderTeams();
   }));
 // Gruppespil sub-toggle: Stillinger vs Resultater (content is already rendered; just swap).
 document.querySelectorAll(".gview").forEach(b =>

@@ -1,4 +1,4 @@
-round,home,away,reg,et,decider,winner
+round,home,away,reg,et,decider,winner,date
 # Fill ONE row per knockout match as it is played. Header line above must stay first.
 # round   : R32 | R16 | QF | SF | FINAL | BRONZE   (BRONZE = 3rd-place match, scores no points)
 # home,away: team names exactly as in data/groups.txt (English), e.g. "United States", "Ivory Coast"
@@ -6,38 +6,41 @@ round,home,away,reg,et,decider,winner
 # et      : goals scored in extra time as "h-a" (leave blank if no extra time)
 # decider : FT (won in regulation) | ET (won in extra time) | P (penalty shootout)
 # winner  : the team that advanced  (REQUIRED — for P the reg+et score is a draw)
+# date    : YYYY-MM-DD the match was played (official eloratings match dates; drives the "over tid" timeline)
 #
 # Examples (delete or keep as comments — lines starting with # are ignored):
-#   R32,Mexico,Norway,2-1,,FT,Mexico
-#   R16,Spain,Brazil,1-1,0-0,P,Spain
-#   QF,France,England,1-1,1-0,ET,France
-R32,Canada,South Africa,1-0,,FT,Canada
-R32,Brazil,Japan,2-1,,FT,Brazil
-R32,Germany,Paraguay,1-1,0-0,P,Paraguay
-R32,Netherlands,Morocco,1-1,0-0,P,Morocco
-R32,Norway,Ivory Coast,2-1,,FT,Norway
-R32,France,Sweden,3-0,,FT,France
-R32,Mexico,Ecuador,2-0,,FT,Mexico
-R32,England,DR Congo,2-1,,FT,England
-R32,Belgium,Senegal,2-2,1-0,ET,Belgium
-R32,United States,Bosnia and Herzegovina,2-0,,FT,United States
-R32,Spain,Austria,3-0,,FT,Spain
-R32,Portugal,Croatia,2-1,,FT,Portugal
-R32,Switzerland,Algeria,2-0,,FT,Switzerland
-R32,Egypt,Australia,1-1,0-0,P,Egypt
-R32,Argentina,Cape Verde,1-1,2-1,ET,Argentina
-R32,Colombia,Ghana,1-0,,FT,Colombia
-R16,Morocco,Canada,3-0,,FT,Morocco
-R16,France,Paraguay,1-0,,FT,France
-R16,Norway,Brazil,2-1,,FT,Norway
-R16,England,Mexico,3-2,,FT,England
-R16,Spain,Portugal,1-0,,FT,Spain
-R16,Belgium,United States,4-1,,FT,Belgium
-R16,Argentina,Egypt,3-2,,FT,Argentina
-R16,Switzerland,Colombia,0-0,0-0,P,Switzerland
-QF,France,Morocco,2-0,,FT,France
-QF,Spain,Belgium,2-1,,FT,Spain
-QF,England,Norway,1-1,1-0,ET,England
-QF,Argentina,Switzerland,1-1,2-0,ET,Argentina
-SF,Spain,France,2-0,,FT,Spain
-SF,Argentina,England,2-1,,FT,Argentina
+#   R32,Mexico,Norway,2-1,,FT,Mexico,2026-06-30
+#   R16,Spain,Brazil,1-1,0-0,P,Spain,2026-07-05
+#   QF,France,England,1-1,1-0,ET,France,2026-07-10
+R32,Canada,South Africa,1-0,,FT,Canada,2026-06-28
+R32,Brazil,Japan,2-1,,FT,Brazil,2026-06-29
+R32,Germany,Paraguay,1-1,0-0,P,Paraguay,2026-06-29
+R32,Netherlands,Morocco,1-1,0-0,P,Morocco,2026-06-29
+R32,Norway,Ivory Coast,2-1,,FT,Norway,2026-06-30
+R32,France,Sweden,3-0,,FT,France,2026-06-30
+R32,Mexico,Ecuador,2-0,,FT,Mexico,2026-06-30
+R32,England,DR Congo,2-1,,FT,England,2026-07-01
+R32,Belgium,Senegal,2-2,1-0,ET,Belgium,2026-07-01
+R32,United States,Bosnia and Herzegovina,2-0,,FT,United States,2026-07-01
+R32,Spain,Austria,3-0,,FT,Spain,2026-07-02
+R32,Portugal,Croatia,2-1,,FT,Portugal,2026-07-02
+R32,Switzerland,Algeria,2-0,,FT,Switzerland,2026-07-02
+R32,Egypt,Australia,1-1,0-0,P,Egypt,2026-07-03
+R32,Argentina,Cape Verde,1-1,2-1,ET,Argentina,2026-07-03
+R32,Colombia,Ghana,1-0,,FT,Colombia,2026-07-03
+R16,Morocco,Canada,3-0,,FT,Morocco,2026-07-04
+R16,France,Paraguay,1-0,,FT,France,2026-07-04
+R16,Norway,Brazil,2-1,,FT,Norway,2026-07-05
+R16,England,Mexico,3-2,,FT,England,2026-07-05
+R16,Spain,Portugal,1-0,,FT,Spain,2026-07-06
+R16,Belgium,United States,4-1,,FT,Belgium,2026-07-06
+R16,Argentina,Egypt,3-2,,FT,Argentina,2026-07-07
+R16,Switzerland,Colombia,0-0,0-0,P,Switzerland,2026-07-07
+QF,France,Morocco,2-0,,FT,France,2026-07-09
+QF,Spain,Belgium,2-1,,FT,Spain,2026-07-10
+QF,England,Norway,1-1,1-0,ET,England,2026-07-11
+QF,Argentina,Switzerland,1-1,2-0,ET,Argentina,2026-07-11
+SF,Spain,France,2-0,,FT,Spain,2026-07-14
+SF,Argentina,England,2-1,,FT,Argentina,2026-07-15
+# FINAL (Spain vs Argentina) to be played 2026-07-19 — uncomment & fill score/decider/winner when known:
+# FINAL,Spain,Argentina,,,,,2026-07-19
