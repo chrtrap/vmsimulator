@@ -436,6 +436,7 @@ const flagCode = t => {
 const fl = t => { const c = flagCode(t); return c ? `<img class="flag" src="flags/${c}.svg" alt="" loading="lazy">` : "🏳️"; };
 const da = t => (TEAM_DA[t] || t);
 const ft = t => `${fl(t)} ${da(t)}`;
+const ftr = t => `${da(t)} ${fl(t)}`;   // mirror: name then flag — for right-aligned (home) cells so the flag hugs the score
 // Danish number formatting: "." for thousands, "," for decimals (10.000 · 28,0%).
 const dk = x => Number(x).toLocaleString("da-DK");                       // natural decimals
 const dkf = (x, n) => Number(x).toLocaleString("da-DK",                  // fixed n decimals
@@ -914,7 +915,7 @@ function renderGroupsTab(d){
       return `<div class="gres">
         <span class="gdate">${dd}</span>
         <span class="gtag">Gr ${r.group}</span>
-        <span class="gh ${r.gh > r.ga ? "gwin" : ""}">${ft(r.home)}</span>
+        <span class="gh ${r.gh > r.ga ? "gwin" : ""}">${ftr(r.home)}</span>
         <span class="gsc">${r.gh}–${r.ga}</span>
         <span class="ga2 ${r.ga > r.gh ? "gwin" : ""}">${ft(r.away)}</span>
       </div>`;
@@ -939,7 +940,7 @@ function renderKnockoutResults(d){
         const dec = g.decider !== "FT" ? `<span class="gtag">${deciderDa(g.decider)}</span>` : "";
         return `<div class="gres">
           <span class="gdate">${koDay(g.date)}</span>
-          <span class="gh ${g.winner === g.home ? "gwin" : ""}">${ft(g.home)}</span>
+          <span class="gh ${g.winner === g.home ? "gwin" : ""}">${ftr(g.home)}</span>
           <span class="gsc">${g.gh}–${g.ga}</span>
           <span class="ga2 ${g.winner === g.away ? "gwin" : ""}">${ft(g.away)}</span>
           <span class="kdec">${dec}</span>
@@ -959,7 +960,7 @@ function renderKnockoutResults(d){
       secs += `<div class="mdsec"><h3>Finale</h3>
         <div class="gres">
           <span class="gdate">${koDay(d.final_date)}</span>
-          <span class="gh">${ft(w[0].team)}</span>
+          <span class="gh">${ftr(w[0].team)}</span>
           <span class="probbar" title="${esc(da(w[0].team))} ${dk(w[0].pct)}% · ${esc(da(w[1].team))} ${dk(w[1].pct)}%">
             <span class="pseg fav" style="width:${w[0].pct}%">${pl(w[0].pct)}</span>
             <span class="pseg dog" style="width:${w[1].pct}%">${pl(w[1].pct)}</span>
