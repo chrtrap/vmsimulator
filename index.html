@@ -934,20 +934,37 @@ function renderGroupsTab(d){
 // Knockout "Resultater" list: played KO games (d.knockout_results), same row format as the
 // group results but grouped by round; decider (Forl./Straffe) shown as a trailing tag.
 let KO_VIEW = "tree";   // Knockout sub-view: 'tree' (bracket, default) vs 'results' (dated list)
-const KO_ROUND_ORDER = ["Round of 32","Round of 16","Quarterfinals","Semifinals","Third Place Match","Final"];
+// Bronze match ("Third Place Match") is intentionally left out — a non-counting game, omitted
+// from the bracket tree too, so it never shows in the Resultater list (real or simulated).
+const KO_ROUND_ORDER = ["Round of 32","Round of 16","Quarterfinals","Semifinals","Final"];
 const koDay = s => s ? `${s.slice(8)}/${s.slice(5,7)}` : "";
 function renderKnockoutResults(d){
+  // In a single scenario every KO game has a simulated result, so list the whole played-out
+  // bracket (SAMPLE.bracket) with actual scores — no win% (the probbar below is stats-only).
+  // Aggregate mode lists only the real played games (d.knockout_results) + a predicted final.
+  const single = MODE === "single" && SAMPLE && SAMPLE.bracket;
+  const rkey = (round,a,b) => round + "|" + [a,b].slice().sort().join("|");
+  const dateOf = {};
+  (d.knockout_results || []).forEach(g => { dateOf[rkey(g.round,g.home,g.away)] = g.date; });
+
+  // Normalise both sources to one row shape {round,num,date,home,away,gh,gaway,winner,decider}.
+  const games = single
+    ? SAMPLE.bracket.map(m => ({round:m.round, num:m.num, date:dateOf[rkey(m.round,m.a,m.b)] || "",
+        home:m.a, away:m.b, gh:m.ga, gaway:m.gb, winner:m.w, decider:m.decider}))
+    : (d.knockout_results || []).map(g => ({round:g.round, num:null, date:g.date,
+        home:g.home, away:g.away, gh:g.gh, gaway:g.ga, winner:g.winner, decider:g.decider}));
+
   const byR = {};
-  (d.knockout_results || []).forEach(g => (byR[g.round] ??= []).push(g));
+  games.forEach(g => (byR[g.round] ??= []).push(g));
   let secs = KO_ROUND_ORDER.filter(r => byR[r]).map(r => {
     const rows = byR[r].slice()
-      .sort((x,y) => x.date < y.date ? -1 : x.date > y.date ? 1 : 0)
+      .sort((x,y) => single ? x.num - y.num : (x.date < y.date ? -1 : x.date > y.date ? 1 : 0))
       .map(g => {
         const dec = g.decider !== "FT" ? `<span class="gtag">${deciderDa(g.decider)}</span>` : "";
         return `<div class="gres">
           <span class="gdate">${koDay(g.date)}</span>
           <span class="gh ${g.winner === g.home ? "gwin" : ""}">${cellH(g.home)}</span>
-          <span class="gsc">${g.gh}–${g.ga}</span>
+          <span class="gsc">${g.gh}–${g.gaway}</span>
           <span class="ga2 ${g.winner === g.away ? "gwin" : ""}">${cellA(g.away)}</span>
           <span class="kdec">${dec}</span>
         </div>`;
@@ -956,8 +973,9 @@ function renderKnockoutResults(d){
   }).join("");
 
   // Predicted final: until the final is played, show the model's finalists + win% (the same
-  // numbers the tree shows on the Final slot). Replaced by the real result once it's entered.
-  if(!byR["Final"]){
+  // numbers the tree shows on the Final slot). Stats mode only — a single scenario already
+  // has its final listed above with the simulated score. Replaced by the real result once entered.
+  if(!single && !byR["Final"]){
     const fin = (d.rounds || []).find(r => r.name === "Final");
     const m = fin && fin.matches && fin.matches[0];
     const w = m && !m.realized && m.winners;
