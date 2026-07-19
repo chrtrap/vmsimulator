@@ -43,4 +43,4 @@ QF,Argentina,Switzerland,1-1,2-0,ET,Argentina,2026-07-11
 SF,Spain,France,2-0,,FT,Spain,2026-07-14
 SF,Argentina,England,2-1,,FT,Argentina,2026-07-15
 # FINAL (Spain vs Argentina) to be played 2026-07-19 — uncomment & fill score/decider/winner when known:
-# FINAL,Spain,Argentina,,,,,2026-07-19
+FINAL,Spain,Argentina,0-0,1-0,ET,Spain,2026-07-19
