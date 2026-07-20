@@ -1062,10 +1062,10 @@ function renderModel(d){
   $("#modelHead").innerHTML = `<h2>Hvor god var modellen? <small>modellens vurdering FØR turneringen, holdt op mod det der faktisk skete</small></h2>
     <div class="mhead">
       <div class="mstat"><div class="v">${champ?ft(champ):"—"}</div><div class="l">Vinder — modellens ${cRank}.-favorit (${dk(cOdds)}% for titlen før start)</div></div>
-      <div class="mstat"><div class="v">${favAcc}<span class="u">%</span></div><div class="l">af modellens favoritter nåede det stadie de var tippet til (${hitSum}/${slotSum})</div></div>
+      <div class="mstat"><div class="v">${favAcc}<span class="u">%</span></div><div class="l">Af modellens favoritter nåede det stadie de var tippet til (${hitSum}/${slotSum})</div></div>
       <div class="mstat"><div class="v">${dkf(brier,3)}</div><div class="l">Brier-score for titlen — lavere er bedre (${dkf(brierUnif,3)} for et rent gæt)</div></div>
     </div>
-    <p class="note"><b>Brier-score</b> måler hvor tæt modellens sandsynligheder ramte: for hvert hold tager vi (den forudsagte titel-chance minus om holdet vandt), i anden potens, og lægger sammen. 0 er perfekt, og jo lavere jo bedre. Et rent tilfældigt gæt ville lande på ca. ${dkf(brierUnif,2)} — modellen ramte ${dkf(brier,2)}.</p>`;
+    <p class="note"><b>Brier-score</b> måler hvor tæt modellens sandsynligheder ramte: for hvert hold tager vi forskellen mellem den forudsagte titel-chance og om holdet vandt (1 hvis ja, 0 hvis nej), sætter den i anden potens og lægger det hele sammen. 0 er perfekt, og jo lavere jo bedre. Et rent tilfældigt gæt ville lande på ca. ${dkf(brierUnif,2)} — modellen ramte ${dkf(brier,2)}.</p>`;
 
   const favTop = byChamp.slice(0,12), maxO = sr[favTop[0]].champ || 1;
   $("#modelFav").innerHTML = `<h2>Titelfavoritter før turneringen vs. virkeligheden</h2>
@@ -1110,9 +1110,9 @@ function renderModel(d){
     const winPts = winner ? winner.real : 0, gap = optReal - winPts;
     $("#modelPool").innerHTML = `<h2>Hvor forudsigelig var konkurrencen?</h2>
       <div class="mhead">
-        <div class="mstat"><div class="v">${dk(winOdds)}<span class="u">%</span></div><div class="l">vinderchance modellen gav <b>${winner?esc(shortName(winner.name)):"—"}</b> før start — jo lavere, jo mere overraskende en vinder</div></div>
-        <div class="mstat"><div class="v">${favWon?"Ja ✓":"Nej"}</div><div class="l">vandt modellens favorit før start? (${esc(shortName(favName))}, ${dk(favOdds)}%)</div></div>
-        <div class="mstat"><div class="v">${dkf(gap, pdec(false))}<span class="u"> point</span></div><div class="l">manglede vinderen fra det bedst mulige hold (${dkf(winPts,pdec(false))} af ${dkf(optReal,pdec(false))})</div></div>
+        <div class="mstat"><div class="v">${dk(winOdds)}<span class="u">%</span></div><div class="l">Vinderchance modellen gav <b>${winner?esc(shortName(winner.name)):"—"}</b> før start — jo lavere, jo mere overraskende en vinder</div></div>
+        <div class="mstat"><div class="v">${favWon?"Ja ✓":"Nej"}</div><div class="l">Vandt modellens favorit før start? (${esc(shortName(favName))}, ${dk(favOdds)}%)</div></div>
+        <div class="mstat"><div class="v">${dkf(gap, pdec(false))}<span class="u"> point</span></div><div class="l">Manglede vinderen fra det bedst mulige hold (${dkf(winPts,pdec(false))} af ${dkf(optReal,pdec(false))})</div></div>
       </div>`;
   } else $("#modelPool").innerHTML = "";
 
@@ -1125,8 +1125,8 @@ function renderModel(d){
     const boom = vt.slice().sort((a,b)=> b.s - a.s)[0];   // biggest swinger
     $("#modelVar").innerHTML = `<h2>Boom eller bust — hvor meget svinger holdvalgene?</h2>
       <div class="mhead">
-        <div class="mstat"><div class="v">±${dkf(avgStd, pdec(true))}<span class="u"> point</span></div><div class="l">gennemsnitligt udsving pr. hold (std.afv.) — jo højere, jo mere afhænger konkurrencen af held</div></div>
-        <div class="mstat"><div class="v">${boom?ft(boom.t):"—"}</div><div class="l">det mest alt-eller-intet holdvalg: ${boom?`forventet ${dkf(boom.m, pdec(true))} ± ${dkf(boom.s, pdec(true))}`:""} point</div></div>
+        <div class="mstat"><div class="v">±${dkf(avgStd, pdec(true))}<span class="u"> point</span></div><div class="l">Gennemsnitligt udsving pr. hold (std.afv.) — jo højere, jo mere afhænger konkurrencen af held</div></div>
+        <div class="mstat"><div class="v">${boom?ft(boom.t):"—"}</div><div class="l">Det mest alt-eller-intet holdvalg: ${boom?`forventet ${dkf(boom.m, pdec(true))} ± ${dkf(boom.s, pdec(true))}`:""} point</div></div>
       </div>
       ${varScatter(vt)}
       <p class="note">Hvert flag = et hold. Vandret = forventede point (xPoint), lodret = udsving (± std.afv.). <b>Højt oppe</b> = alt-eller-intet (fx hold på vippen, hvor avancement giver store bonusser). Sikre valg ligger nede til højre; rene gambles øverst til venstre. Hold musen over et flag for de præcise tal.</p>`;
