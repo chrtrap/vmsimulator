@@ -1053,11 +1053,9 @@ function renderModel(d){
   const teams = Object.keys(sr);
   const champ = d.champion ? d.champion.team : null;
 
-  // Headline: champion's pre-tournament title rank/odds, favourite hit-rate, champion Brier score.
+  // Headline: champion's pre-tournament title rank/odds + favourite hit-rate.
   const byChamp = teams.slice().sort((a,b)=> sr[b].champ - sr[a].champ);
   const cRank = champ ? byChamp.indexOf(champ)+1 : 0, cOdds = champ ? sr[champ].champ : 0;
-  let brier = 0; teams.forEach(t => { const p=sr[t].champ/100, y=(t===champ)?1:0; brier += (p-y)*(p-y); });
-  const nT = teams.length, pu = 1/nT, brierUnif = (1-pu)*(1-pu) + (nT-1)*pu*pu;
   let hitSum=0, slotSum=0;
   const stageHits = M_STAGES.map(s => {
     const topN = teams.slice().sort((a,b)=> sr[b][s.key]-sr[a][s.key]).slice(0, s.slots);
@@ -1071,9 +1069,7 @@ function renderModel(d){
     <div class="mhead">
       <div class="mstat"><div class="v">${champ?ft(champ):"—"}</div><div class="l">Vinder — modellens ${cRank}.-favorit (${dk(cOdds)}% for titlen før start)</div></div>
       <div class="mstat"><div class="v">${favAcc}<span class="u">%</span></div><div class="l">Af modellens favoritter nåede det stadie de var tippet til (${hitSum}/${slotSum})</div></div>
-      <div class="mstat"><div class="v">${dkf(brier,3)}</div><div class="l">Brier-score for titlen — lavere er bedre (${dkf(brierUnif,3)} for et rent gæt)</div></div>
-    </div>
-    <p class="note"><b>Brier-score</b> måler hvor tæt modellens sandsynligheder ramte: for hvert hold tager vi forskellen mellem den forudsagte titel-chance og om holdet vandt (1 hvis ja, 0 hvis nej), sætter den i anden potens og lægger det hele sammen. 0 er perfekt, og jo lavere jo bedre. Et rent tilfældigt gæt ville lande på ca. ${dkf(brierUnif,2)} — modellen ramte ${dkf(brier,2)}.</p>`;
+    </div>`;
 
   const favTop = byChamp.slice(0,12), maxO = sr[favTop[0]].champ || 1;
   $("#modelFav").innerHTML = `<h2>Titelfavoritter før turneringen vs. virkeligheden</h2>

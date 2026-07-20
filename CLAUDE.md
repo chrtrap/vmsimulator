@@ -216,11 +216,12 @@ sim-count control bar and the "Scenarie hvor X vinder" buttons; the champion ban
     eller bust" (per-team std-dev risk/reward scatter, **flags as marks**, `varScatter`).
   - *Holdpoint* (`renderTeams`) xPoint column → pre-tournament per-team value (labelled `xPoint*`).
 - **Modellen tab (top-level, finished-only, comp-AGNOSTIC, `renderModel`):** how well the Elo model
-  predicted the *tournament*. Panels: headline (champion's pre-tour title rank/odds · favourite hit-rate ·
-  champion **Brier** score vs a random guess) · Titelfavoritter vs virkeligheden · Træfsikkerhed pr. stadie
-  · **Kalibrering** reliability diagram (`calSvg`; all 48 teams × 6 stages binned, predicted vs actual).
-  Verdict: **strong** — Spain the #1 favourite won, top-4 favourites all reached the SF, Brier 0.56 vs 0.98
-  random, and well-calibrated (mild top-end overconfidence only).
+  predicted the *tournament*. Panels: headline (champion's pre-tour title rank/odds · favourite hit-rate) ·
+  Titelfavoritter vs virkeligheden · Træfsikkerhed pr. stadie · **Kalibrering** reliability diagram
+  (`calSvg`; all 48 teams × 6 stages binned, predicted vs actual). Verdict: **strong** — Spain the #1
+  favourite won, top-4 favourites all reached the SF, well-calibrated (mild top-end overconfidence only).
+  (A champion Brier-score tile was tried and **removed 2026-07-20** — too abstract/thin for the audience,
+  redundant with hit-rate + calibration.)
 
 ## Reusing for the Euros (~2028) — the roadmap
 The retrospective machinery above is driven by payload fields, so it **lights up automatically** once the
