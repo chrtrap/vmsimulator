@@ -284,6 +284,7 @@
   body.finished #modeLbl,
   body.finished .tab[data-v="stages"]{display:none}
   body.finished .grid{grid-template-columns:1fr}
+  body.finished .controls{display:none}   /* nothing left but a now-redundant sim-count line */
   /* The Modellen (model-review) tab is a post-tournament retrospective — only shown when finished. */
   .tab[data-v="model"]{display:none}
   body.finished .tab[data-v="model"]{display:block}
@@ -323,7 +324,6 @@
   .varwrap .vgl{stroke:var(--line);stroke-width:1}
   .varwrap .vax{fill:var(--dim);font-size:10px}
   .varwrap .vdot{stroke:var(--panel);stroke-width:1.2}
-  .varwrap .vlbl{fill:var(--txt);font-size:10.5px}
   .err{color:#ff7a7a}
   .heat{font-variant-numeric:tabular-nums;text-align:right;border-radius:4px}
 </style>
@@ -332,7 +332,7 @@
 <div class="wrap">
   <header>
     <h1>⚽ VM 2026 — Monte Carlo-simulator</h1>
-    <p>Spillede kampe bruger de rigtige resultater; resten simuleres ud fra Elo.</p>
+    <p id="subtitle">Spillede kampe bruger de rigtige resultater; resten simuleres ud fra Elo.</p>
   </header>
 
   <div class="controls">
@@ -606,6 +606,9 @@ function render(){
   const single = MODE === "single";
   // Post-tournament: hide the odds panel / random-scenario mode / stage-odds tab (see CSS).
   document.body.classList.toggle("finished", !!d.tournament_over);
+  $("#subtitle").textContent = d.tournament_over
+    ? "Turneringen er afgjort — alle resultater er de rigtige. Siden er nu et tilbageblik på forløbet, og på hvor godt modellen forudsagde det."
+    : "Spillede kampe bruger de rigtige resultater; resten simuleres ud fra Elo.";
   // Recolour the whole UI (green "Forventet" → violet) + show the sticky banner so it's
   // unmistakable that a single scenario is a hypothetical, not the expected outcome.
   document.body.classList.toggle("scenario", single);
@@ -1061,7 +1064,8 @@ function renderModel(d){
       <div class="mstat"><div class="v">${champ?ft(champ):"—"}</div><div class="l">Vinder — modellens ${cRank}.-favorit (${dk(cOdds)}% for titlen før start)</div></div>
       <div class="mstat"><div class="v">${favAcc}<span class="u">%</span></div><div class="l">af modellens favoritter nåede det stadie de var tippet til (${hitSum}/${slotSum})</div></div>
       <div class="mstat"><div class="v">${dkf(brier,3)}</div><div class="l">Brier-score for titlen — lavere er bedre (${dkf(brierUnif,3)} for et rent gæt)</div></div>
-    </div>`;
+    </div>
+    <p class="note"><b>Brier-score</b> måler hvor tæt modellens sandsynligheder ramte: for hvert hold tager vi (den forudsagte titel-chance minus om holdet vandt), i anden potens, og lægger sammen. 0 er perfekt, og jo lavere jo bedre. Et rent tilfældigt gæt ville lande på ca. ${dkf(brierUnif,2)} — modellen ramte ${dkf(brier,2)}.</p>`;
 
   const favTop = byChamp.slice(0,12), maxO = sr[favTop[0]].champ || 1;
   $("#modelFav").innerHTML = `<h2>Titelfavoritter før turneringen vs. virkeligheden</h2>
@@ -1089,8 +1093,8 @@ function renderModel(d){
     const inb = pts.filter(x => x.p>=edges[b] && x.p<edges[b+1]);
     if(inb.length) bins.push({mp:inb.reduce((a,x)=>a+x.p,0)/inb.length, ar:inb.reduce((a,x)=>a+x.y,0)/inb.length, n:inb.length});
   }
-  $("#modelCal").innerHTML = `<h2>Kalibrering</h2>` + calSvg(bins) +
-    `<p class="note">Hvert punkt = en gruppe forudsigelser (${pts.length} i alt: 48 hold × 6 stadier). X = modellens sandsynlighed, Y = hvor ofte det så faktisk skete; punktets størrelse = antal. På den stiplede linje = perfekt kalibreret, <b>under</b> = modellen var for selvsikker. Baseret på én turnering — vejledende.</p>`;
+  $("#modelCal").innerHTML = `<h2>Kalibrering — er sandsynlighederne til at stole på?</h2>` + calSvg(bins) +
+    `<p class="note">Modellen giver hvert hold en chance for at nå hvert stadie (fx "Spanien 66% i kvartfinalen"). Her er alle ${pts.length} forudsigelser (48 hold × 6 stadier) samlet i grupper efter hvor sikker modellen var — og for hver gruppe: hvor stor en andel skete rent faktisk? <b>Vandret</b> = modellens sandsynlighed, <b>lodret</b> = hvor ofte det så skete. Ligger en prik på den stiplede linje, ramte modellen plet; <b>under</b> linjen var modellen for optimistisk, <b>over</b> for forsigtig. Prikkens størrelse = antal forudsigelser i gruppen (de fleste er langskud tæt på 0%). Bemærk: det bygger kun på ét VM, så tallene rummer en del tilfældighed — se grafen som en indikation, ikke en endelig dom over modellen.</p>`;
 
   // Pool predictability — comp-specific (reacts to the Trap/Andreas toggle). The Andreas scoring's
   // big advance/eliminate bonuses make its pool outcome noisier, which the winner's low pre-tour
@@ -1104,14 +1108,12 @@ function renderModel(d){
     const favWon = winner && favName === winner.name;
     const optReal = pool.optimal_real ? pool.optimal_real.xpts : 0;
     const winPts = winner ? winner.real : 0, gap = optReal - winPts;
-    const lockHint = COMP_LOCKED ? "" : " Skift pulje foroven for at sammenligne de to.";
-    $("#modelPool").innerHTML = `<h2>Hvor forudsigelig var puljen? <small>${COMP_LOCKED?"gælder den viste pulje":"gælder den valgte pulje foroven"}</small></h2>
+    $("#modelPool").innerHTML = `<h2>Hvor forudsigelig var konkurrencen?</h2>
       <div class="mhead">
         <div class="mstat"><div class="v">${dk(winOdds)}<span class="u">%</span></div><div class="l">vinderchance modellen gav <b>${winner?esc(shortName(winner.name)):"—"}</b> før start — jo lavere, jo mere overraskende en vinder</div></div>
         <div class="mstat"><div class="v">${favWon?"Ja ✓":"Nej"}</div><div class="l">vandt modellens favorit før start? (${esc(shortName(favName))}, ${dk(favOdds)}%)</div></div>
         <div class="mstat"><div class="v">${dkf(gap, pdec(false))}<span class="u"> point</span></div><div class="l">manglede vinderen fra det bedst mulige hold (${dkf(winPts,pdec(false))} af ${dkf(optReal,pdec(false))})</div></div>
-      </div>
-      <p class="note">Puljer med store bonusser for at avancere/ryge ud svinger mere — enkelte holdvalg bliver mere alt-eller-intet, så udfaldet afhænger mere af held end af de rigtige favoritter.${lockHint}</p>`;
+      </div>`;
   } else $("#modelPool").innerHTML = "";
 
   // Boom/bust: per-team spread (std dev) of pre-tournament fantasy points vs the expected value —
@@ -1121,39 +1123,36 @@ function renderModel(d){
   if(vt.length){
     const avgStd = vt.reduce((a,x)=>a+x.s,0)/vt.length;
     const boom = vt.slice().sort((a,b)=> b.s - a.s)[0];   // biggest swinger
-    $("#modelVar").innerHTML = `<h2>Boom eller bust — hvor meget svinger holdvalgene? <small>gælder ${COMP_LOCKED?"den viste":"den valgte"} pulje</small></h2>
+    $("#modelVar").innerHTML = `<h2>Boom eller bust — hvor meget svinger holdvalgene?</h2>
       <div class="mhead">
-        <div class="mstat"><div class="v">±${dkf(avgStd, pdec(true))}<span class="u"> point</span></div><div class="l">gennemsnitligt udsving pr. hold (std.afv.) — jo højere, jo mere afhænger puljen af held</div></div>
+        <div class="mstat"><div class="v">±${dkf(avgStd, pdec(true))}<span class="u"> point</span></div><div class="l">gennemsnitligt udsving pr. hold (std.afv.) — jo højere, jo mere afhænger konkurrencen af held</div></div>
         <div class="mstat"><div class="v">${boom?ft(boom.t):"—"}</div><div class="l">det mest alt-eller-intet holdvalg: ${boom?`forventet ${dkf(boom.m, pdec(true))} ± ${dkf(boom.s, pdec(true))}`:""} point</div></div>
       </div>
       ${varScatter(vt)}
-      <p class="note">Hvert punkt = et hold. Vandret = forventede point (xPoint), lodret = udsving (± std.afv.). <b>Højt oppe</b> = alt-eller-intet (fx bobbelhold hvor avancement giver store bonusser). Ideelle sikre valg ligger nede til højre; rene gambles øverst til venstre. Hold musen over et punkt for detaljer.</p>`;
+      <p class="note">Hvert flag = et hold. Vandret = forventede point (xPoint), lodret = udsving (± std.afv.). <b>Højt oppe</b> = alt-eller-intet (fx hold på vippen, hvor avancement giver store bonusser). Sikre valg ligger nede til højre; rene gambles øverst til venstre. Hold musen over et flag for de præcise tal.</p>`;
   } else $("#modelVar").innerHTML = "";
 }
 
 // Risk/reward scatter for the boom/bust view: x = expected points, y = spread (std dev).
+// Each team is drawn as its flag so every point is identifiable at a glance (hover = exact numbers).
 function varScatter(vt){
   const W=640,H=380,ml=40,mb=34,mt=14,mr=16,pw=W-ml-mr,ph=H-mt-mb;
   const xM = axisMax(Math.max(1, ...vt.map(p=>p.m))), yM = axisMax(Math.max(0.5, ...vt.map(p=>p.s)));
-  const x=v=>ml+v/xM*pw, y=v=>mt+(1-v/yM*1.0)*ph;
+  const x=v=>ml+v/xM*pw, y=v=>mt+(1-v/yM)*ph;
   let g="";
   for(let k=0;k<=4;k++){ const vx=xM*k/4, vy=yM*k/4;
     g+=`<line class="vgl" x1="${x(vx)}" y1="${mt}" x2="${x(vx)}" y2="${mt+ph}"/><line class="vgl" x1="${ml}" y1="${y(vy)}" x2="${ml+pw}" y2="${y(vy)}"/>`;
     g+=`<text class="vax" x="${x(vx)}" y="${H-mb+14}" text-anchor="middle">${dk(Math.round(vx))}</text><text class="vax" x="${ml-5}" y="${y(vy)+3}" text-anchor="end">${dkf(vy, vy<10?1:0)}</text>`; }
-  // label the 5 swingiest teams (highest std); the rest are dots-only (hover for detail).
-  // Right-edge labels flip to the left so they don't clip off the plot.
-  const lab = new Set(vt.slice().sort((a,b)=>b.s-a.s).slice(0,5).map(p=>p.t));
-  const dots = vt.map(p=>{
-    const cx=x(p.m), cy=y(p.s);
+  // Draw low-swing teams first so the swingiest flags sit on top of the pile.
+  const marks = vt.slice().sort((a,b)=> a.s - b.s).map(p=>{
+    const cx=x(p.m), cy=y(p.s), cc=flagCode(p.t);
     const tip = `${da(p.t)}: forventet ${dkf(p.m,1)} ± ${dkf(p.s,1)} point`;
-    let l = "";
-    if(lab.has(p.t)){
-      const right = cx > W - mr - 72;
-      l = `<text class="vlbl" x="${right?cx-7:cx+7}" y="${cy+3.5}" text-anchor="${right?'end':'start'}">${da(p.t)}</text>`;
-    }
-    return `<circle class="vdot" cx="${cx}" cy="${cy}" r="4.2" fill="var(--accent)" fill-opacity="0.8"><title>${tip}</title></circle>${l}`;
+    if(!cc) return `<circle class="vdot" cx="${cx}" cy="${cy}" r="4" fill="var(--accent)"><title>${tip}</title></circle>`;
+    const bx=(cx-9).toFixed(1), by=(cy-6.5).toFixed(1);
+    return `<image href="flags/${cc}.svg" x="${bx}" y="${by}" width="18" height="13" preserveAspectRatio="xMidYMid slice"><title>${tip}</title></image>`
+      + `<rect x="${bx}" y="${by}" width="18" height="13" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="0.75"/>`;
   }).join("");
-  return `<div class="varwrap"><svg viewBox="0 0 ${W} ${H}" role="img"><g>${g}</g>${dots}
+  return `<div class="varwrap"><svg viewBox="0 0 ${W} ${H}" role="img"><g>${g}</g>${marks}
     <text class="vax" x="${ml+pw/2}" y="${H-1}" text-anchor="middle">Forventede point (xPoint)</text>
     <text class="vax" transform="translate(11,${mt+ph/2}) rotate(-90)" text-anchor="middle">Udsving (± std.afv.)</text></svg></div>`;
 }
@@ -1166,7 +1165,7 @@ function calSvg(bins){
     g+=`<line class="cgl" x1="${x(v)}" y1="${mt}" x2="${x(v)}" y2="${mt+ph}"/><line class="cgl" x1="${ml}" y1="${y(v)}" x2="${ml+pw}" y2="${y(v)}"/>`;
     g+=`<text class="cax" x="${x(v)}" y="${H-mb+14}" text-anchor="middle">${v}</text><text class="cax" x="${ml-6}" y="${y(v)+3}" text-anchor="end">${v}</text>`; }
   const diag=`<line class="diag" x1="${x(0)}" y1="${y(0)}" x2="${x(100)}" y2="${y(100)}"/>`;
-  const dots=bins.map(b=>`<circle class="cdot" cx="${x(b.mp)}" cy="${y(b.ar)}" r="${Math.min(14,4+Math.sqrt(b.n))}" fill="var(--accent2)" fill-opacity="0.75"><title>forudsagt ${dkf(b.mp,0)}% → skete ${dkf(b.ar,0)}% (n=${b.n})</title></circle>`).join("");
+  const dots=bins.map(b=>`<circle class="cdot" cx="${x(b.mp)}" cy="${y(b.ar)}" r="${(4+Math.min(7,Math.sqrt(b.n)/2.2)).toFixed(1)}" fill="var(--accent2)" fill-opacity="0.75"><title>forudsagt ${dkf(b.mp,0)}% → skete ${dkf(b.ar,0)}% (n=${b.n})</title></circle>`).join("");
   return `<div class="calwrap"><svg viewBox="0 0 ${W} ${H}" role="img"><g>${g}</g>${diag}${dots}
     <text class="cax" x="${ml+pw/2}" y="${H-1}" text-anchor="middle">Modellens sandsynlighed (%)</text>
     <text class="cax" transform="translate(10,${mt+ph/2}) rotate(-90)" text-anchor="middle">Skete faktisk (%)</text></svg></div>`;
@@ -1194,7 +1193,7 @@ function renderTrend(d){
   const isWin = TREND_VIEW === "win";
   $("#trendTitle").textContent = isWin ? "Vinderchance over tid" : "Point over tid";
   $("#trendNote").innerHTML = (isWin
-    ? `Sandsynlighed for at hver deltager <b>vinder puljen</b>, dag for dag — fra modellens vurdering før turneringen (${dLong(hist[0].date)}, kun ud fra Elo) til den afgjorte finale. ${dk(d.n)} simuleringer pr. dag.`
+    ? `Sandsynlighed for at hver deltager <b>vinder konkurrencen</b>, dag for dag — fra modellens vurdering før turneringen (${dLong(hist[0].date)}, kun ud fra Elo) til den afgjorte finale. ${dk(d.n)} simuleringer pr. dag.`
     : `Realiserede point akkumuleret dag for dag gennem turneringen.`)
     + ` Tryk på navnene nedenfor for at vælge hvem der vises — fx kun to for en head-to-head.`;
 
