@@ -284,6 +284,40 @@
   body.finished #modeLbl,
   body.finished .tab[data-v="stages"]{display:none}
   body.finished .grid{grid-template-columns:1fr}
+  /* The Modellen (model-review) tab is a post-tournament retrospective — only shown when finished. */
+  .tab[data-v="model"]{display:none}
+  body.finished .tab[data-v="model"]{display:block}
+  #v-model .panel{margin-bottom:14px}
+  #v-model h2 small{font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)}
+  .mhead{display:flex;flex-wrap:wrap;gap:14px}
+  .mstat{flex:1 1 150px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .mstat .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+  .mstat .l{color:var(--dim);font-size:12px;margin-top:3px}
+  .mstat .v .u{font-size:13px;font-weight:600;color:var(--dim)}
+  .favrow{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:10px;padding:5px 0;border-top:1px solid var(--line)}
+  .favrow:first-child{border-top:0}
+  .favrow .rk{color:var(--dim);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+  .favrow .tm{display:flex;align-items:center;gap:8px;min-width:0}
+  .favrow .tm .bar{height:6px;border-radius:4px;background:var(--bar);position:relative;flex:1;max-width:190px;overflow:hidden}
+  .favrow .tm .bar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .favrow .tm .pc{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;min-width:44px}
+  .fin{font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+  .fin.win{background:rgba(245,196,81,.16);color:var(--gold)}
+  .fin.deep{background:var(--tint);color:var(--accent)}
+  .fin.mid{background:var(--panel2);color:var(--txt)}
+  .fin.out{background:var(--panel2);color:var(--dim)}
+  .hitrow{display:grid;grid-template-columns:120px 1fr 78px;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)}
+  .hitrow:first-child{border-top:0}
+  .hitrow .sn{font-size:13px}
+  .hitrow .ht{height:9px;border-radius:5px;background:var(--bar);overflow:hidden}
+  .hitrow .ht i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .hitrow .hn{font-size:12.5px;color:var(--dim);text-align:right;font-variant-numeric:tabular-nums}
+  .calwrap{position:relative;max-width:440px;margin:0 auto}
+  .calwrap svg{display:block;width:100%;height:auto;font-variant-numeric:tabular-nums}
+  .calwrap .diag{stroke:var(--dim);stroke-width:1;stroke-dasharray:4 4;opacity:.6}
+  .calwrap .cgl{stroke:var(--line);stroke-width:1}
+  .calwrap .cax{fill:var(--dim);font-size:10px}
+  .calwrap .cdot{stroke:var(--panel);stroke-width:1.5}
   .err{color:#ff7a7a}
   .heat{font-variant-numeric:tabular-nums;text-align:right;border-radius:4px}
 </style>
@@ -332,9 +366,18 @@
       <div>
         <div class="tabs">
           <div class="tab active" data-v="pools">Konkurrence</div>
+          <div class="tab" data-v="model">Modellen</div>
           <div class="tab" data-v="path">Knockout</div>
           <div class="tab" data-v="groups">Gruppespil</div>
           <div class="tab" data-v="stages">Slutspilsodds</div>
+        </div>
+
+        <div class="view" id="v-model">
+          <div class="panel" id="modelHead"></div>
+          <div class="panel" id="modelPool"></div>
+          <div class="panel" id="modelFav"></div>
+          <div class="panel" id="modelHit"></div>
+          <div class="panel" id="modelCal"></div>
         </div>
 
         <div class="view" id="v-path">
@@ -631,6 +674,7 @@ function render(){
   renderKnockoutResults(d);
   renderTeams();
   renderRules();
+  if(fin) renderModel(d);   // post-tournament model-performance review (Modellen tab)
 
   const info = d.realized_info || {};
   $("#status").textContent = single
@@ -792,18 +836,24 @@ function renderPools(d, scenario){
                        : (useReal ? p.optimal_real : p.optimal);
     const optName = useReal ? (fin ? "Optimalt hold" : "Optimalt hold (indtil nu)")
                             : (baseMode ? "Optimalt hold (før turneringen)" : "Optimalt hold (forventet)");
-    // For the pre-tournament optimal squad, also show what it scored in reality and where that
-    // would have placed among the participants (a picked-on-day-0 "what if").
+    // Pre-tournament per-team xPoints (baseline), for the two optimal-squad callouts below.
+    const baseTeamXP = fin ? (((d.baseline||{}).team_xpts||{})[capComp()] || {}) : {};
     const teamReal = {}; (d.teams||[]).forEach(t => teamReal[t.team] = (isPrice ? t.andreas_real : t.trap_real) || 0);
+    // Baseline optimal: what it scored in reality + where that would have placed (a day-0 "what if").
     const optReal = (baseMode && o) ? o.teams.reduce((s,t)=> s + (teamReal[t.team]||0), 0) : 0;
     const optRank = (baseMode && o) ? 1 + p.rows.filter(r => r.real > optReal).length : 0;
+    // Realized (hindsight) optimal: how many xPoints the model gave that exact squad pre-tournament.
+    const optBaseXP = (useReal && fin && o) ? o.teams.reduce((s,t)=> s + (baseTeamXP[t.team]||0), 0) : 0;
+    const optNote = baseMode
+      ? `faktisk slutplacering ${optRank}. med ${dkf(optReal, pdec(false))} point`
+      : (useReal && fin) ? `modellen gav dette hold ${dkf(optBaseXP, pdec(true))} xPoint før turneringen` : "";
     const optCard = o ? `<div class="pcard opt">
         <div class="phead"><span class="prank">★</span>
           <span class="pname">${optName}</span>
           <span class="pxp">${dkf(o.xpts, pdec(!useReal))} ${useReal ? "point" : "xPoint"}</span>
           <span class="pwin">${isPrice ? `pris ${o.cost}/${p.budget}` : 'bedst pr. lag'}</span>
         </div>
-        ${baseMode ? `<div class="pwin" style="margin:1px 0 6px">faktisk slutplacering ${optRank}. med ${dkf(optReal, pdec(false))} point</div>` : ""}
+        ${optNote ? `<div class="pwin" style="margin:1px 0 6px">${optNote}</div>` : ""}
         <div class="chips">${o.teams.map(t=>tag(t,isPrice)).join("")}</div>
       </div>` : "";
     const bx   = r => baseP[r.name] ? baseP[r.name].xpts : 0;   // pre-tournament expected points
@@ -964,6 +1014,114 @@ function renderStages(d){
   $("#stageTbl").innerHTML = head + "<tbody>"+body+"</tbody>";
 }
 
+// ---- Modellen: post-tournament model-performance review --------------------
+const M_STAGES = [
+  {key:"r32", idx:1, slots:32, da:"1/16-finalen"},
+  {key:"r16", idx:2, slots:16, da:"1/8-finalen"},
+  {key:"qf",  idx:3, slots:8,  da:"kvartfinalen"},
+  {key:"sf",  idx:4, slots:4,  da:"semifinalen"},
+  {key:"final",idx:5,slots:2,  da:"finalen"},
+  {key:"champ",idx:6,slots:1,  da:"titlen"},
+];
+const M_FINISH = {6:["🏆 Vinder","win"],5:["Finalist","deep"],4:["Semifinale","deep"],
+                  3:["Kvartfinale","mid"],2:["1/8-finale","mid"],1:["1/16-finale","out"],0:["Gruppespil","out"]};
+const finBadge = i => { const [t,c] = M_FINISH[i] || M_FINISH[0]; return `<span class="fin ${c}">${t}</span>`; };
+const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+function renderModel(d){
+  const sr = (d.baseline||{}).stage_reach, ar = d.actual_reach || {};
+  if(!sr){ $("#modelHead").innerHTML = '<p class="note">Modeldata ikke tilgængelig.</p>';
+    ["modelFav","modelHit","modelCal"].forEach(id=>$("#"+id).innerHTML=""); return; }
+  const teams = Object.keys(sr);
+  const champ = d.champion ? d.champion.team : null;
+
+  // Headline: champion's pre-tournament title rank/odds, favourite hit-rate, champion Brier score.
+  const byChamp = teams.slice().sort((a,b)=> sr[b].champ - sr[a].champ);
+  const cRank = champ ? byChamp.indexOf(champ)+1 : 0, cOdds = champ ? sr[champ].champ : 0;
+  let brier = 0; teams.forEach(t => { const p=sr[t].champ/100, y=(t===champ)?1:0; brier += (p-y)*(p-y); });
+  const nT = teams.length, pu = 1/nT, brierUnif = (1-pu)*(1-pu) + (nT-1)*pu*pu;
+  let hitSum=0, slotSum=0;
+  const stageHits = M_STAGES.map(s => {
+    const topN = teams.slice().sort((a,b)=> sr[b][s.key]-sr[a][s.key]).slice(0, s.slots);
+    const hits = topN.filter(t => (ar[t]||0) >= s.idx).length;
+    hitSum += hits; slotSum += s.slots;
+    return {...s, hits};
+  });
+  const favAcc = slotSum ? Math.round(hitSum/slotSum*100) : 0;
+
+  $("#modelHead").innerHTML = `<h2>Hvor god var modellen? <small>modellens vurdering FØR turneringen, holdt op mod det der faktisk skete</small></h2>
+    <div class="mhead">
+      <div class="mstat"><div class="v">${champ?ft(champ):"—"}</div><div class="l">Vinder — modellens ${cRank}.-favorit (${dk(cOdds)}% for titlen før start)</div></div>
+      <div class="mstat"><div class="v">${favAcc}<span class="u">%</span></div><div class="l">af modellens favoritter nåede det stadie de var tippet til (${hitSum}/${slotSum})</div></div>
+      <div class="mstat"><div class="v">${dkf(brier,3)}</div><div class="l">Brier-score for titlen — lavere er bedre (${dkf(brierUnif,3)} for et rent gæt)</div></div>
+    </div>`;
+
+  const favTop = byChamp.slice(0,12), maxO = sr[favTop[0]].champ || 1;
+  $("#modelFav").innerHTML = `<h2>Titelfavoritter før turneringen vs. virkeligheden</h2>
+    ${favTop.map((t,i)=>`<div class="favrow">
+      <span class="rk">${i+1}</span>
+      <span class="tm">${fl(t)} <span style="min-width:94px;white-space:nowrap">${da(t)}</span>
+        <span class="bar"><i style="width:${sr[t].champ/maxO*100}%"></i></span>
+        <span class="pc">${dk(sr[t].champ)}%</span></span>
+      ${finBadge(ar[t]||0)}
+    </div>`).join("")}
+    <p class="note">Bjælken = modellens sandsynlighed for at holdet ville vinde VM. Chippen = hvor langt holdet faktisk nåede.</p>`;
+
+  $("#modelHit").innerHTML = `<h2>Træfsikkerhed pr. stadie</h2>
+    ${stageHits.map(s=>`<div class="hitrow">
+      <span class="sn">${cap1(s.da)}</span>
+      <span class="ht"><i style="width:${s.hits/s.slots*100}%"></i></span>
+      <span class="hn">${s.hits}/${s.slots}</span>
+    </div>`).join("")}
+    <p class="note">For hvert stadie: hvor mange af modellens favoritter (lige så mange som der er pladser) der rent faktisk nåede dertil.</p>`;
+
+  // Kalibrering (reliability diagram): all 48 teams × 6 stages, binned by predicted probability.
+  const pts = []; teams.forEach(t => M_STAGES.forEach(s => pts.push({p: sr[t][s.key], y: (ar[t]||0)>=s.idx?100:0})));
+  const edges=[0,10,25,45,70,100.01], bins=[];
+  for(let b=0;b<edges.length-1;b++){
+    const inb = pts.filter(x => x.p>=edges[b] && x.p<edges[b+1]);
+    if(inb.length) bins.push({mp:inb.reduce((a,x)=>a+x.p,0)/inb.length, ar:inb.reduce((a,x)=>a+x.y,0)/inb.length, n:inb.length});
+  }
+  $("#modelCal").innerHTML = `<h2>Kalibrering</h2>` + calSvg(bins) +
+    `<p class="note">Hvert punkt = en gruppe forudsigelser (${pts.length} i alt: 48 hold × 6 stadier). X = modellens sandsynlighed, Y = hvor ofte det så faktisk skete; punktets størrelse = antal. På den stiplede linje = perfekt kalibreret, <b>under</b> = modellen var for selvsikker. Baseret på én turnering — vejledende.</p>`;
+
+  // Pool predictability — comp-specific (reacts to the Trap/Andreas toggle). The Andreas scoring's
+  // big advance/eliminate bonuses make its pool outcome noisier, which the winner's low pre-tour
+  // odds surface. Named only via the current pool's own participants (privacy-safe on locked links).
+  const pn = capComp(), pool = (d.pools||{})[pn], bpart = ((d.baseline||{}).part||{})[pn] || {};
+  if(pool && pool.rows && Object.keys(bpart).length){
+    const winner = pool.rows.find(r => r.real_rank === 1);
+    const winOdds = winner && bpart[winner.name] ? bpart[winner.name].win : 0;
+    const favName = Object.keys(bpart).sort((a,b)=> bpart[b].win - bpart[a].win)[0];
+    const favOdds = bpart[favName] ? bpart[favName].win : 0;
+    const favWon = winner && favName === winner.name;
+    const optReal = pool.optimal_real ? pool.optimal_real.xpts : 0;
+    const winPts = winner ? winner.real : 0, gap = optReal - winPts;
+    const lockHint = COMP_LOCKED ? "" : " Skift pulje foroven for at sammenligne de to.";
+    $("#modelPool").innerHTML = `<h2>Hvor forudsigelig var puljen? <small>${COMP_LOCKED?"gælder den viste pulje":"gælder den valgte pulje foroven"}</small></h2>
+      <div class="mhead">
+        <div class="mstat"><div class="v">${dk(winOdds)}<span class="u">%</span></div><div class="l">vinderchance modellen gav <b>${winner?esc(shortName(winner.name)):"—"}</b> før start — jo lavere, jo mere overraskende en vinder</div></div>
+        <div class="mstat"><div class="v">${favWon?"Ja ✓":"Nej"}</div><div class="l">vandt modellens favorit før start? (${esc(shortName(favName))}, ${dk(favOdds)}%)</div></div>
+        <div class="mstat"><div class="v">${dkf(gap, pdec(false))}<span class="u"> point</span></div><div class="l">manglede vinderen fra det bedst mulige hold (${dkf(winPts,pdec(false))} af ${dkf(optReal,pdec(false))})</div></div>
+      </div>
+      <p class="note">Puljer med store bonusser for at avancere/ryge ud svinger mere — enkelte holdvalg bliver mere alt-eller-intet, så udfaldet afhænger mere af held end af de rigtige favoritter.${lockHint}</p>`;
+  } else $("#modelPool").innerHTML = "";
+}
+
+function calSvg(bins){
+  const W=320,H=320,ml=36,mb=30,mt=12,mr=12,pw=W-ml-mr,ph=H-mt-mb;
+  const x=v=>ml+v/100*pw, y=v=>mt+(1-v/100)*ph;
+  let g="";
+  for(let k=0;k<=4;k++){ const v=k*25;
+    g+=`<line class="cgl" x1="${x(v)}" y1="${mt}" x2="${x(v)}" y2="${mt+ph}"/><line class="cgl" x1="${ml}" y1="${y(v)}" x2="${ml+pw}" y2="${y(v)}"/>`;
+    g+=`<text class="cax" x="${x(v)}" y="${H-mb+14}" text-anchor="middle">${v}</text><text class="cax" x="${ml-6}" y="${y(v)+3}" text-anchor="end">${v}</text>`; }
+  const diag=`<line class="diag" x1="${x(0)}" y1="${y(0)}" x2="${x(100)}" y2="${y(100)}"/>`;
+  const dots=bins.map(b=>`<circle class="cdot" cx="${x(b.mp)}" cy="${y(b.ar)}" r="${Math.min(14,4+Math.sqrt(b.n))}" fill="var(--accent2)" fill-opacity="0.75"><title>forudsagt ${dkf(b.mp,0)}% → skete ${dkf(b.ar,0)}% (n=${b.n})</title></circle>`).join("");
+  return `<div class="calwrap"><svg viewBox="0 0 ${W} ${H}" role="img"><g>${g}</g>${diag}${dots}
+    <text class="cax" x="${ml+pw/2}" y="${H-1}" text-anchor="middle">Modellens sandsynlighed (%)</text>
+    <text class="cax" transform="translate(10,${mt+ph/2}) rotate(-90)" text-anchor="middle">Skete faktisk (%)</text></svg></div>`;
+}
+
 // ---- "Over tid" line charts (Vinderchance / Point) --------------------------
 let TREND_VIEW = "win";           // 'win' = win% over time · 'pts' = realized points over time
 const TREND_OFF = new Set();      // legend-muted participants (highlight-on-click)
@@ -986,7 +1144,7 @@ function renderTrend(d){
   const isWin = TREND_VIEW === "win";
   $("#trendTitle").textContent = isWin ? "Vinderchance over tid" : "Point over tid";
   $("#trendNote").innerHTML = (isWin
-    ? `Sandsynlighed for at hver deltager <b>vinder puljen</b>, dag for dag — fra modellens vurdering før turneringen (${dLong(hist[0].date)}, kun ud fra seedning/Elo) til den afgjorte finale. ${dk(d.n)} simuleringer pr. dag.`
+    ? `Sandsynlighed for at hver deltager <b>vinder puljen</b>, dag for dag — fra modellens vurdering før turneringen (${dLong(hist[0].date)}, kun ud fra Elo) til den afgjorte finale. ${dk(d.n)} simuleringer pr. dag.`
     : `Realiserede point akkumuleret dag for dag gennem turneringen.`)
     + ` Tryk på navnene nedenfor for at vælge hvem der vises — fx kun to for en head-to-head.`;
 
@@ -1289,7 +1447,7 @@ function renderTeams(){
   $("#teamsNote").innerHTML = single
     ? "Point hvert hold ville give i netop dette scenarie (tryk 🎲 for et nyt). Vælg 📊 Forventet for gennemsnittet over alle simuleringer."
     : fin
-      ? `${isTrap ? "Lag = seedningslag (L1 = bedste lag). " : "Pris = budgetomkostning. "}Point = de endelige, realiserede point · <b>xPoint*</b> = holdets forventede point <b>før turneringen</b> (dag 0, kun ud fra seedning/Elo) · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere.`
+      ? `${isTrap ? "Lag = seedningslag (L1 = bedste lag). " : "Pris = budgetomkostning. "}Point = de endelige, realiserede point · <b>xPoint*</b> = holdets forventede point <b>før turneringen</b> · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere.`
       : (isTrap
         ? "Lag = seedningslag (L1 = bedste lag). Point = realiserede point indtil nu · xPoint = forventede slutpoint · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere; filtrér på lag eller kun valgte hold."
         : "Pris = budgetomkostning. Point = realiserede point indtil nu · xPoint = forventede slutpoint · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere; filtrér evt. til kun valgte hold.");

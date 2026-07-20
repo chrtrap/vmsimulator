@@ -459,10 +459,25 @@ def run_simulation(n, n_samples=0):
                     for i in range(len(names))],
         }
 
+    # Actual furthest stage each team reached (for the Modellen calibration: predicted vs outcome).
+    # Index: 0 group · 1 R32 · 2 R16 · 3 QF · 4 SF · 5 Final · 6 Champion. Bronze doesn't advance.
+    _RIDX = {"R32": 1, "R16": 2, "QF": 3, "SF": 4, "FINAL": 5}
+    actual_reach = {str(t): 0 for g in DATA[0] for t in g}
+    for ko in KNOCKOUT:
+        idx = _RIDX.get(ko["round"])
+        if idx is None:
+            continue
+        for t in (ko["home"], ko["away"]):
+            if t in actual_reach:
+                actual_reach[t] = max(actual_reach[t], idx)
+        if ko["round"] == "FINAL" and ko["winner"] in actual_reach:
+            actual_reach[ko["winner"]] = 6
+
     return {
         "n": n,
         "elapsed": round(elapsed, 2),
         "realized_info": REAL_INFO,
+        "actual_reach": actual_reach,     # team -> furthest stage index reached (Modellen tab)
         "champion": title_odds[0] if title_odds else None,
         "title_odds": title_odds,
         "andreas_xpts": andreas_xpts,

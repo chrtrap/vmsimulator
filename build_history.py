@@ -70,7 +70,7 @@ def snapshot(date):
             "title_top": {"team": str(top_team), "pct": round(top_w / N * 100, 2)},
             "part": pdata,
         }
-    return out, team_xpts
+    return out, team_xpts, extra
 
 
 def _fmt_opt(o, is_price):
@@ -86,15 +86,25 @@ def _fmt_opt(o, is_price):
     return d
 
 
-def write_baseline(snap, team_xpts):
+# Stage-reach rounds (as named by simulate_tournament) -> short payload keys.
+STAGE_KEYS = [("Round of 32", "r32"), ("Round of 16", "r16"), ("Quarterfinals", "qf"),
+              ("Semifinals", "sf"), ("Final", "final"), ("Champion", "champ")]
+
+
+def write_baseline(snap, team_xpts, extra):
     """The rich day-0 (pre-tournament) snapshot the post-final views read: per-team xPoints, the
-    optimal squad by those xPoints, and each participant's pre-tournament win% + xPoints."""
+    optimal squad by those xPoints, each participant's pre-tournament win% + xPoints, and — for the
+    Modellen tab — every team's pre-tournament probability of reaching each knockout stage."""
+    sr = extra.get("stage_reach", {})
+    stage_reach = {str(t): {key: round(d.get(rname, 0) / N * 100, 2) for rname, key in STAGE_KEYS}
+                   for t, d in sr.items()}
     baseline = {
         "team_xpts": {c: {t: round(v, 3) for t, v in team_xpts[c].items()} for c in COMPS},
         "optimal": {"Trap": _fmt_opt(S.optimal_trap(team_xpts["Trap"]), False),
                     "Andreas": _fmt_opt(S.optimal_andreas(team_xpts["Andreas"]), True)},
         "part": {c: {nm: {"win": p["win"], "xpts": p["xpts"]} for nm, p in snap[c]["part"].items()}
                  for c in COMPS},
+        "stage_reach": stage_reach,   # {team: {r32,r16,qf,sf,final,champ} pre-tournament %}
     }
     path = os.path.join(S.HERE, "data", "baseline.json")
     with open(path, "w", encoding="utf-8") as f:
@@ -103,6 +113,14 @@ def write_baseline(snap, team_xpts):
 
 
 def main():
+    # BASELINE_ONLY: regenerate just data/baseline.json (one sim) without touching history.jsonl —
+    # used when only the day-0 artifact's shape changed (e.g. adding stage_reach for the Modellen tab).
+    if os.environ.get("BASELINE_ONLY"):
+        print(f"Baseline-only: 1 snapshot x {N} sims -> data/baseline.json", flush=True)
+        snap, team_xpts, extra = snapshot(BASELINE)
+        write_baseline(snap, team_xpts, extra)
+        return
+
     group_dates = set(RES["date"])
     ko_dates = {k["date"] for k in S.KNOCKOUT if k["date"]}
     dates = [BASELINE] + sorted(group_dates | ko_dates)
@@ -110,9 +128,9 @@ def main():
 
     lines = []
     for i, d in enumerate(dates, 1):
-        snap, team_xpts = snapshot(d)
+        snap, team_xpts, extra = snapshot(d)
         if d == BASELINE:
-            write_baseline(snap, team_xpts)   # the rich day-0 artifact for the post-final views
+            write_baseline(snap, team_xpts, extra)   # the rich day-0 artifact for the post-final views
         for pn in COMPS:
             lines.append(json.dumps(snap[pn], ensure_ascii=False))
         top = snap["Trap"]["title_top"]
