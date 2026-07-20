@@ -149,6 +149,42 @@ def scheduled_final_date():
     except OSError:
         pass
     return ""
+# "Over tid" timeline: one Monte-Carlo snapshot per match date, backfilled by build_history.py
+# into data/history.jsonl (one JSON object per line, per {date, comp}). Loaded once and grouped
+# by competition, oldest-first, for the two "over tid" charts + the pre-tournament (baseline)
+# xPoints the Konkurrence "Forventet" column swaps to once the final is played. Absent file -> {}.
+def load_history(path):
+    by_comp = {"Trap": [], "Andreas": []}
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                snap = json.loads(line)
+                by_comp.setdefault(snap["comp"], []).append(snap)
+    except OSError:
+        return {}
+    for comp in by_comp:
+        by_comp[comp].sort(key=lambda s: s["date"])
+    return by_comp
+HISTORY = load_history(os.path.join(HERE, "data", "history.jsonl"))
+
+
+# Rich day-0 (pre-tournament) snapshot written by build_history.py: per-team xPoints, the optimal
+# squad by those xPoints, and each participant's pre-tournament win%/xPoints. Powers the post-final
+# "Før turneringen" standings, the Holdpoint pre-tournament swap, and the pre-tour optimal card.
+def load_baseline(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+BASELINE = load_baseline(os.path.join(HERE, "data", "baseline.json"))
+# The tournament is over once the final has a result pinned in knockout.csv — that's when the
+# forward sim has no matches left (live xPoints == realized) and the retrospective views turn on.
+TOURNAMENT_OVER = any(k["round"] == "FINAL" for k in KNOCKOUT)
+
 REAL_A, REAL_T, REAL_GF, REAL_GA, REAL_INFO = wc.realized_points(
     DATA[0], DATA[2], DATA[3], DATA[4], DATA[5], knockout=KNOCKOUT)
 # Deterministic group-stage tables (standings, dated results, 3rd-place ladder) for the
@@ -443,6 +479,9 @@ def run_simulation(n, n_samples=0):
         "thirds": thirds,                      # 3rd-place ladder for the best-8 cut
 
         "pools": pools_out,
+        "history": HISTORY,               # "over tid": per-comp list of dated snapshots (win%/xpts/real)
+        "baseline": BASELINE,             # rich day-0 snapshot (team xpts, pre-tour optimal, part win/xpts)
+        "tournament_over": TOURNAMENT_OVER,  # final played -> enable the pre-tournament xPoints swap
         "h2h": h2h,
         # Scenarios drawn from THIS run: {bracket, scores:{pool:{participant:pts}}}.
         "samples": extra.get("samples", []),

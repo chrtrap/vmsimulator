@@ -67,6 +67,41 @@
   .tab.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
   .view{display:none}
   .view.active{display:block}
+  /* "Over tid" line charts — hand-rolled inline SVG (no chart lib). */
+  .tchart{position:relative;width:100%;overflow-x:auto}
+  .tchart svg{display:block;width:100%;min-width:640px;height:auto;font-variant-numeric:tabular-nums}
+  .tchart .grid line{stroke:var(--line);stroke-width:1}
+  .tchart .axis line{stroke:#3a4552;stroke-width:1}
+  .tchart .axlbl{fill:var(--dim);font-size:11px}
+  .tchart .phase{fill:var(--dim);font-size:10.5px;letter-spacing:.5px;text-transform:uppercase}
+  .tchart .divide{stroke:#3a4552;stroke-width:1;stroke-dasharray:3 3}
+  .tchart .ser{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+  .tchart .ser.dim{stroke:#4b5563;stroke-width:1.25;opacity:.5}
+  .tchart .ser.win{stroke-width:3.2}
+  .tchart .endlbl{font-size:11px;font-weight:600;dominant-baseline:middle}
+  .tchart .cross{stroke:var(--dim);stroke-width:1;stroke-dasharray:2 3;opacity:.7}
+  .tchart .dot{stroke:var(--panel);stroke-width:1.5}
+  .ttip{position:absolute;pointer-events:none;z-index:5;background:var(--panel2);
+    border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;
+    box-shadow:0 6px 20px rgba(0,0,0,.45);min-width:150px;opacity:0;transition:opacity .08s}
+  .ttip .tth{color:var(--dim);font-size:11px;margin-bottom:5px}
+  .ttip .ttr{display:flex;align-items:center;gap:6px;justify-content:space-between;margin:2px 0}
+  .ttip .ttn{display:flex;align-items:center;gap:6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .ttip .sw{width:9px;height:9px;border-radius:2px;flex:0 0 auto}
+  .ttip .ttv{font-variant-numeric:tabular-nums;font-weight:600}
+  .tlegend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px}
+  .tlegend .lg{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);
+    cursor:pointer;padding:2px 4px;border-radius:6px;user-select:none}
+  .tlegend .lg:hover{color:var(--txt)}
+  .tlegend .lg.off{opacity:.4}
+  .tlegend .lg .sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+  .tlegend .lg.win .nm{font-weight:700;color:var(--txt)}
+  .tlegwrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:12px}
+  .tlegwrap .tlegend{margin-top:0;flex:1 1 auto}
+  .tlegact{display:flex;gap:6px;flex:0 0 auto}
+  .tlga{font-size:11.5px;color:var(--dim);border:1px solid var(--line);border-radius:999px;
+    padding:3px 10px;cursor:pointer;background:var(--panel2)}
+  .tlga:hover{color:var(--txt);border-color:var(--accent)}
   /* bracket — a real 16->8->4->2->1 tree: aligned columns + SVG connectors */
   .bracket{display:flex;overflow-x:auto;overflow-y:visible;padding-bottom:8px;position:relative;align-items:stretch}
   .bkcol{min-width:194px;flex:0 0 auto;display:flex;flex-direction:column;padding:0 11px;position:relative;z-index:1}
@@ -190,9 +225,9 @@
   .potf{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer}
   .potf:hover{color:var(--txt)}
   .potf.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
-  .psort,.pview,.cbasis,.gview,.pickf,.kview{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 13px;font-size:12.5px;cursor:pointer}
-  .psort:hover,.pview:hover,.cbasis:hover,.gview:hover,.pickf:hover,.kview:hover{color:var(--txt)}
-  .psort.active,.pview.active,.cbasis.active,.gview.active,.pickf.active,.kview.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
+  .psort,.pview,.cbasis,.gview,.pickf,.kview,.tvw{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 13px;font-size:12.5px;cursor:pointer}
+  .psort:hover,.pview:hover,.cbasis:hover,.gview:hover,.pickf:hover,.kview:hover,.tvw:hover{color:var(--txt)}
+  .psort.active,.pview.active,.cbasis.active,.gview.active,.pickf.active,.kview.active,.tvw.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
   /* Standings: "how this participant can win" button + muted note when they never won. */
   .winbtn{margin-top:9px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer}
   .winbtn:hover{color:var(--txt);border-color:var(--accent);background:var(--tint)}
@@ -242,6 +277,13 @@
     border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
   .scenbar .back:hover{filter:brightness(1.08)}
   .hide{display:none}
+  /* Post-tournament ("finished"): the result is known, so drop the probabilistic UI —
+     the win-odds side panel, the random-scenario mode, the stage-odds tab — and widen the grid. */
+  body.finished .odds,
+  body.finished .modebtn,
+  body.finished #modeLbl,
+  body.finished .tab[data-v="stages"]{display:none}
+  body.finished .grid{grid-template-columns:1fr}
   .err{color:#ff7a7a}
   .heat{font-variant-numeric:tabular-nums;text-align:right;border-radius:4px}
 </style>
@@ -254,7 +296,7 @@
   </header>
 
   <div class="controls">
-    <span style="color:var(--dim);font-size:13px">Visning</span>
+    <span id="modeLbl" style="color:var(--dim);font-size:13px">Visning</span>
     <span class="modebtn active" data-mode="stats">📊 Forventet</span>
     <span class="modebtn" data-mode="single">🎲 Ny tilfældig turnering</span>
     <span class="status" id="status">Klar.</span>
@@ -338,6 +380,22 @@
           </div>
           <div id="pools"></div>
           <div id="poolMatrix" style="display:none"></div>
+          <div id="poolTrend" style="display:none">
+            <div class="tfilter" id="trendView">
+              <span class="flbl">Vis</span>
+              <span class="tvw active" data-tv="win">Vinderchance</span>
+              <span class="tvw" data-tv="pts">Point</span>
+            </div>
+            <div class="panel">
+              <h2 id="trendTitle">Vinderchance over tid</h2>
+              <div id="trendChart" class="tchart"></div>
+              <div class="tlegwrap">
+                <div id="trendLegend" class="tlegend"></div>
+                <div class="tlegact"><span class="tlga" data-act="all">Vis alle</span><span class="tlga" data-act="none">Ryd</span></div>
+              </div>
+              <p class="note" id="trendNote"></p>
+            </div>
+          </div>
           <div id="poolTeams" style="display:none">
             <div class="panel">
               <h2 id="teamsTitle">Forventede holdpoint</h2>
@@ -496,6 +554,8 @@ function render(){
   $("#out").classList.remove("hide");
   const d = LAST;
   const single = MODE === "single";
+  // Post-tournament: hide the odds panel / random-scenario mode / stage-odds tab (see CSS).
+  document.body.classList.toggle("finished", !!d.tournament_over);
   // Recolour the whole UI (green "Forventet" → violet) + show the sticky banner so it's
   // unmistakable that a single scenario is a hypothetical, not the expected outcome.
   document.body.classList.toggle("scenario", single);
@@ -513,9 +573,9 @@ function render(){
     $("#champName").innerHTML = fin ? ft(fin.w) : "—";
     $("#champPct").textContent = "";
   } else {
-    $("#champLabel").textContent = "Mest sandsynlige vinder";
+    $("#champLabel").textContent = d.tournament_over ? "Vinder" : "Mest sandsynlige vinder";
     $("#champName").innerHTML = d.champion ? ft(d.champion.team) : "—";
-    $("#champPct").textContent = d.champion ? pct(d.champion.pct) : "";
+    $("#champPct").textContent = (d.champion && !d.tournament_over) ? pct(d.champion.pct) : "";
   }
 
   const top = d.title_odds[0] ? d.title_odds[0].pct : 1;
@@ -535,26 +595,37 @@ function render(){
     ? "Ét muligt forløb fra de simulerede turneringer. Tryk 🎲 igen for et nyt. (Slutspilsodds, Grupper og Holdpoint viser de samlede tal.)"
     : "Hver kamp viser holdet, der oftest vandt netop den plads.";
 
-  // Konkurrence holds four sub-views: Stilling (standings), Analyse (matrix/h2h/contribution),
-  // Holdpoint (per-team points) and Regler (scoring). Analyse is aggregate-only, so it falls
-  // back to the standings in single-scenario mode.
+  // Konkurrence sub-views: Stilling (standings), the "matrix" slot (in-tournament: Analyse
+  // matrix/h2h/contribution — once the result is settled those odds are moot, so it becomes
+  // "Udvikling": the over-tid graphs), Holdpoint (per-team points) and Regler (scoring). The
+  // matrix slot is aggregate-only, so it falls back to the standings in single-scenario mode.
+  const fin = !!d.tournament_over;
   let pv = POOL_VIEW;
   if(single && pv === "matrix") pv = "table";
-  // Analyse (matrix/h2h) is aggregate-only — hide its button in single mode, and keep the
-  // toggle highlight on whichever sub-view is actually shown.
+  const anaBtn = document.querySelector('#poolView .pview[data-view="matrix"]');
+  if(anaBtn) anaBtn.textContent = fin ? "Udvikling" : "Analyse";
   document.querySelectorAll("#poolView .pview").forEach(b => {
     b.style.display = (b.dataset.view === "matrix" && single) ? "none" : "";
     b.classList.toggle("active", b.dataset.view === pv);
   });
   $("#poolSort").style.display   = (pv === "table" && !single) ? "flex" : "none";
+  // Finished: relabel the Point basis toggle — "Nuværende"→final standings, "Forventet"→the
+  // model's pre-tournament projection (baseline xPoints), which the standings now swap to.
+  if(fin){
+    $('#poolSort .psort[data-by="real"]').textContent = "Slutstilling";
+    $('#poolSort .psort[data-by="xpts"]').textContent = "Forventninger før turneringen";
+    $("#poolNote").innerHTML = "<b>Slutstilling</b> = de endelige, realiserede point. <b>Forventninger før turneringen</b> = modellens forventede slutpoint (xPoint) beregnet før turneringen gik i gang — altså hvad vi projekterede du ville score. ★ Optimalt hold = det bedst mulige hold ud fra de forventede point før turneringen.";
+  }
+  const trendOn = pv === "matrix" && fin;    // the "matrix" slot shows the over-tid graphs post-final
   $("#potFilter").style.display  = (pv === "teams" && COMP === "trap") ? "flex" : "none";
   $("#pickedFilter").style.display = (pv === "teams") ? "flex" : "none";
   $("#pools").style.display      = (pv === "table") ? "" : "none";
-  $("#poolMatrix").style.display = (pv === "matrix") ? "" : "none";
+  $("#poolMatrix").style.display = (pv === "matrix" && !fin) ? "" : "none";
+  $("#poolTrend").style.display  = trendOn ? "" : "none";
   $("#poolTeams").style.display  = (pv === "teams") ? "" : "none";
   $("#poolRules").style.display  = (pv === "rules") ? "" : "none";
   $("#poolNote").style.display   = (pv === "table") ? "" : "none";
-  if(pv === "matrix") renderInsights(d); else renderPools(d, scenario);
+  if(pv === "matrix") (fin ? renderTrend(d) : renderInsights(d)); else renderPools(d, scenario);
   renderStages(d);
   renderGroupsTab(d);
   renderKnockoutResults(d);
@@ -677,8 +748,9 @@ let POOL_SORT = "real";   // 'real' = current standing, 'xpts' = expected
 function renderPools(d, scenario){
   const order = [capComp()];   // show only the selected competition
   // Still-alive teams = the title-odds list (already excludes group/KO-eliminated).
-  // Only meaningful for the real tournament, so skip muting in a single scenario.
-  const aliveSet = (!scenario && d.title_odds && d.title_odds.length)
+  // Only meaningful mid-tournament — skip muting in a single scenario, and once it's over
+  // (else every team but the champion would be struck through, which is just noise).
+  const aliveSet = (!scenario && !d.tournament_over && d.title_odds && d.title_odds.length)
     ? new Set(d.title_odds.map(r => r.team)) : null;
   const tag = (t, isPrice) => {
     const elim = aliveSet && !aliveSet.has(t.team);
@@ -709,23 +781,61 @@ function renderPools(d, scenario){
         </div>`).join("")}
       </div>`;
     }
+    // Post-tournament: "Forventet" swaps to the pre-tournament (baseline) xPoints — the model's
+    // day-0 projection — since the live forward sim now has no matches left (xPoints == realized).
+    const fin = d.tournament_over;
+    const baseP = fin ? (((d.baseline||{}).part || {})[capComp()] || {}) : null;   // pre-tour win%/xpts
+    const baseMode = fin && POOL_SORT === "xpts";   // show the baseline projection
     const useReal = POOL_SORT === "real";
-    const o = useReal ? p.optimal_real : p.optimal;
+    // Baseline mode shows the pre-tournament optimal squad (by day-0 xPoints); else the live one.
+    const o = baseMode ? (((d.baseline||{}).optimal || {})[capComp()])
+                       : (useReal ? p.optimal_real : p.optimal);
+    const optName = useReal ? (fin ? "Optimalt hold" : "Optimalt hold (indtil nu)")
+                            : (baseMode ? "Optimalt hold (før turneringen)" : "Optimalt hold (forventet)");
+    // For the pre-tournament optimal squad, also show what it scored in reality and where that
+    // would have placed among the participants (a picked-on-day-0 "what if").
+    const teamReal = {}; (d.teams||[]).forEach(t => teamReal[t.team] = (isPrice ? t.andreas_real : t.trap_real) || 0);
+    const optReal = (baseMode && o) ? o.teams.reduce((s,t)=> s + (teamReal[t.team]||0), 0) : 0;
+    const optRank = (baseMode && o) ? 1 + p.rows.filter(r => r.real > optReal).length : 0;
     const optCard = o ? `<div class="pcard opt">
         <div class="phead"><span class="prank">★</span>
-          <span class="pname">${useReal ? "Optimalt hold (indtil nu)" : "Optimalt hold (forventet)"}</span>
+          <span class="pname">${optName}</span>
           <span class="pxp">${dkf(o.xpts, pdec(!useReal))} ${useReal ? "point" : "xPoint"}</span>
           <span class="pwin">${isPrice ? `pris ${o.cost}/${p.budget}` : 'bedst pr. lag'}</span>
         </div>
+        ${baseMode ? `<div class="pwin" style="margin:1px 0 6px">faktisk slutplacering ${optRank}. med ${dkf(optReal, pdec(false))} point</div>` : ""}
         <div class="chips">${o.teams.map(t=>tag(t,isPrice)).join("")}</div>
       </div>` : "";
-    const rows = p.rows.slice().sort((a,b) => POOL_SORT==="real" ? a.real_rank-b.real_rank : b.xpts-a.xpts);
+    const bx   = r => baseP[r.name] ? baseP[r.name].xpts : 0;   // pre-tournament expected points
+    const bwin = r => baseP[r.name] ? baseP[r.name].win  : 0;   // pre-tournament win%
+    const rows = p.rows.slice().sort((a,b) =>
+      useReal ? a.real_rank-b.real_rank : baseMode ? bx(b)-bx(a) : b.xpts-a.xpts);
     return `<div class="panel pool"><h2>Stilling · ${p.size} deltagere</h2>
       ${optCard}
       ${rows.map((r,i)=>{
         const K = r.pos.length;
         const dist = r.pos.map((v,j)=>`<i style="width:${v}%;background:${distColor(j,K)}" title="${j+1}.: ${dk(v)}%"></i>`).join("");
         const valTxt = isPrice ? `pris ${r.cost}/${p.budget}` : "";
+        // Finished: definitive standings — final points, no win%/placement bars; the secondary
+        // line carries the pre-tournament projection so "projected vs actual" reads at a glance.
+        if(fin){
+          // Slutstilling: final points, secondary = pre-tournament projection. Før turneringen:
+          // the day-0 xPoints/win%, secondary = where they ACTUALLY finished (projected vs reality).
+          const primary = baseMode ? `${dkf(bx(r), pdec(true))} xPoint` : `${dkf(r.real, pdec(false))} point`;
+          const second  = baseMode
+            ? `vinderchance før start ${dk(bwin(r))}% · faktisk slutplacering ${r.real_rank}. (${dkf(r.real, pdec(false))} point)`
+            : `før turneringen ${dkf(bx(r), pdec(true))} xPoint`;
+          return `<div class="pcard">
+            <div class="phead">
+              <span class="prank">${i+1}</span>
+              <span class="pname">${r.name}</span>
+              <span class="pxp">${primary}</span>
+              <span class="pwin ${r.valid?'':'bad'}">${valTxt}</span>
+            </div>
+            <div class="pwin" style="margin:1px 0 6px">${second}</div>
+            <div class="chips">${r.teams.map(t=>tag(t,isPrice)).join("")}</div>
+          </div>`;
+        }
         const primary = POOL_SORT==="real" ? `${dkf(r.real, pdec(false))} point` : `${dkf(r.xpts, pdec(true))} xPoint`;
         const second = POOL_SORT==="real" ? `forventet ${dkf(r.xpts, pdec(true))} xPoint` : `nu ${dkf(r.real, pdec(false))} point`;
         return `<div class="pcard">
@@ -752,6 +862,7 @@ function renderPools(d, scenario){
 // If they never topped their pool across the simulated tournaments, show nothing —
 // the absent button is itself the signal that they can't (realistically) win.
 function winScenLine(d, name){
+  if(d.tournament_over) return "";   // no hypothetical "how they win" once the result is settled
   const has = d.win_scenarios && d.win_scenarios[capComp()] && d.win_scenarios[capComp()][name];
   return has
     ? `<button class="winbtn" data-name="${esc(name)}">🏆 Scenarie hvor ${shortName(name)} vinder</button>`
@@ -851,6 +962,162 @@ function renderStages(d){
     shown.map(c=>{const v=r[c[0]];return `<td class="n heat" style="background:rgba(33,211,162,${(v/100*0.55).toFixed(3)})">${dk(v)}</td>`;}).join("")
   }</tr>`).join("");
   $("#stageTbl").innerHTML = head + "<tbody>"+body+"</tbody>";
+}
+
+// ---- "Over tid" line charts (Vinderchance / Point) --------------------------
+let TREND_VIEW = "win";           // 'win' = win% over time · 'pts' = realized points over time
+const TREND_OFF = new Set();      // legend-muted participants (highlight-on-click)
+// Categorical hues stepped for the dark surface (dataviz default set), assigned to participants
+// in FINAL-STANDING order so each keeps one stable colour across both charts; a 9th+ falls to grey.
+const TREND_HUES = ["#3987e5","#199e70","#e0a52a","#3fb950","#9085e9","#e66767","#d55181","#d95926"];
+const TREND_DIM = "#5b6675";
+const MND_DA = ["jan.","feb.","mar.","apr.","maj","jun.","jul.","aug.","sep.","okt.","nov.","dec."];
+const dLong  = iso => { const [ ,m,dd] = iso.split("-").map(Number); return `${dd}. ${MND_DA[m-1]}`; };
+const dShort = iso => { const [ ,m,dd] = iso.split("-").map(Number); return `${dd}/${m}`; };
+const axisMax = m => { if(m<=0) return 1; const p=Math.pow(10,Math.floor(Math.log10(m)));
+  for(const s of [1,1.5,2,2.5,3,4,5,6,8,10]) if(s*p>=m-1e-9) return s*p; return 10*p; };
+
+function renderTrend(d){
+  const hist = (d.history && d.history[capComp()]) || [];
+  if(hist.length < 2){
+    $("#trendChart").innerHTML = '<p class="note">Ingen historik tilgængelig.</p>';
+    $("#trendLegend").innerHTML = ""; $("#trendNote").textContent = ""; return;
+  }
+  const isWin = TREND_VIEW === "win";
+  $("#trendTitle").textContent = isWin ? "Vinderchance over tid" : "Point over tid";
+  $("#trendNote").innerHTML = (isWin
+    ? `Sandsynlighed for at hver deltager <b>vinder puljen</b>, dag for dag — fra modellens vurdering før turneringen (${dLong(hist[0].date)}, kun ud fra seedning/Elo) til den afgjorte finale. ${dk(d.n)} simuleringer pr. dag.`
+    : `Realiserede point akkumuleret dag for dag gennem turneringen.`)
+    + ` Tryk på navnene nedenfor for at vælge hvem der vises — fx kun to for en head-to-head.`;
+
+  // Stable name->colour by final standing (winner first). Colour the top 8, rest grey.
+  const last = hist[hist.length-1].part;
+  const order = Object.keys(last).sort((a,b)=> (last[b].real - last[a].real) || (last[b].xpts - last[a].xpts));
+  const col = {}; order.forEach((n,i)=> col[n] = i < TREND_HUES.length ? TREND_HUES[i] : TREND_DIM);
+  const winner = order[0];
+  const key = isWin ? "win" : "real";
+  const series = order.map(nm => ({
+    name: nm, color: col[nm], win: nm===winner,
+    vals: hist.map(s => s.part[nm] ? s.part[nm][key] : 0),
+  }));
+  // y-scale over the *shown* series only, so a filtered head-to-head rescales to fill the plot.
+  const shownVals = series.filter(s => !TREND_OFF.has(s.name)).flatMap(s=>s.vals);
+  const rawMax = Math.max(1, ...(shownVals.length ? shownVals : [1]));
+  const yMax = isWin ? 100 : axisMax(rawMax);
+
+  drawLineChart($("#trendChart"), {
+    dates: hist.map(s=>s.date), series, yMax, off: TREND_OFF, winner,
+    valFmt: v => isWin ? dkf(v,1)+"%" : dkf(v, COMP==="andreas"?0:1),
+    axFmt:  v => dk(Math.round(v)) + (isWin ? "%" : ""),
+  });
+
+  $("#trendLegend").innerHTML = order.map(nm => `
+    <span class="lg${TREND_OFF.has(nm)?" off":""}${nm===winner?" win":""}" data-nm="${esc(nm)}">
+      <span class="sw" style="background:${col[nm]}"></span><span class="nm">${esc(shortName(nm))}</span>
+    </span>`).join("");
+  $("#trendLegend").querySelectorAll(".lg").forEach(l => l.onclick = () => {
+    const nm = l.dataset.nm;
+    TREND_OFF.has(nm) ? TREND_OFF.delete(nm) : TREND_OFF.add(nm);
+    renderTrend(LAST);
+  });
+}
+
+// Build a responsive inline-SVG multi-line chart (fixed viewBox, scaled by CSS) with a
+// group/knockout phase divider, right-edge direct labels, and a crosshair+tooltip on hover.
+function drawLineChart(box, o){
+  const W=820, H=380, ml=46, mr=112, mt=16, mb=36;
+  const pw=W-ml-mr, ph=H-mt-mb, n=o.dates.length;
+  const x = i => ml + (n>1 ? i/(n-1)*pw : 0);
+  const y = v => mt + (1 - v/o.yMax)*ph;
+  const drawn = o.series.filter(s => !o.off.has(s.name));   // filtered-out series are hidden entirely
+
+  // y gridlines (5 lines) + labels
+  let g = "";
+  for(let k=0;k<=4;k++){ const v=o.yMax*k/4, yy=y(v);
+    g += `<line class="gl" x1="${ml}" y1="${yy}" x2="${W-mr}" y2="${yy}"/>`;
+    g += `<text class="axlbl" x="${ml-7}" y="${yy+3.5}" text-anchor="end">${o.axFmt(v)}</text>`; }
+
+  // group -> knockout divider (first date on/after 2026-06-28) + phase captions
+  let split = o.dates.findIndex(dt => dt >= "2026-06-28");
+  let ph_str = "";
+  if(split > 1){
+    const xd = (x(split-1)+x(split))/2;
+    ph_str = `<line class="divide" x1="${xd}" y1="${mt}" x2="${xd}" y2="${mt+ph}"/>
+      <text class="phase" x="${(ml+xd)/2}" y="${mt+11}" text-anchor="middle">Gruppespil</text>
+      <text class="phase" x="${(xd+W-mr)/2}" y="${mt+11}" text-anchor="middle">Slutspil</text>`;
+  }
+
+  // x tick labels: baseline + final + a few evenly spaced (the phase divider marks the group/KO
+  // boundary on its own, so we don't tick it — two adjacent dates there would overprint).
+  const ticks = new Set([0, n-1]);
+  for(let i=0;i<n;i+=Math.max(1,Math.round(n/7))) ticks.add(i);
+  let xl = "";
+  [...ticks].sort((a,b)=>a-b).forEach(i =>
+    xl += `<text class="axlbl" x="${x(i)}" y="${H-mb+15}" text-anchor="middle">${i===0?"før start":dShort(o.dates[i])}</text>`);
+
+  // series polylines: tail (grey, beyond top-8) recede as thin dim lines, the coloured ones on top
+  let lines = "";
+  const paths = drawn.map(s => {
+    const pts = s.vals.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    let cls = "ser", style = `stroke:${s.color}`;
+    if(s.color === TREND_DIM){ cls += " dim"; style = ""; }   // grey tail
+    else if(s.win) cls += " win";
+    return {pts, cls, style};
+  });
+  paths.filter(p=>p.cls.includes("dim")).forEach(p=> lines += `<polyline class="${p.cls}" points="${p.pts}"/>`);
+  paths.filter(p=>!p.cls.includes("dim")).forEach(p=> lines += `<polyline class="${p.cls}" style="${p.style}" points="${p.pts}"/>`);
+
+  // right-edge direct labels: the winner + any coloured series that finished meaningfully high
+  // (near-zero finishers, e.g. everyone but the pool winner on the win% chart, stay in the
+  // legend/hover instead of stacking a clipped pile at the baseline). De-collide within the plot
+  // band — push down for the min gap, then anchor the lowest to the baseline and push back up.
+  const GAP=13, bot=mt+ph;
+  const labeled = drawn.filter(s => s.color!==TREND_DIM && (s.win || s.vals[n-1] >= o.yMax*0.02))
+    .map(s => ({ name:s.name, color:s.color, win:s.win, yy:y(s.vals[n-1]) }))
+    .sort((a,b)=>a.yy-b.yy);
+  for(let i=1;i<labeled.length;i++) labeled[i].yy = Math.max(labeled[i].yy, labeled[i-1].yy+GAP);
+  if(labeled.length && labeled[labeled.length-1].yy > bot){
+    labeled[labeled.length-1].yy = bot;
+    for(let i=labeled.length-2;i>=0;i--) labeled[i].yy = Math.min(labeled[i].yy, labeled[i+1].yy-GAP);
+  }
+  if(labeled.length) labeled[0].yy = Math.max(labeled[0].yy, mt);
+  let elab = "";
+  labeled.forEach(L => elab += `<text class="endlbl" x="${W-mr+7}" y="${L.yy.toFixed(1)}" `
+    + `style="fill:${L.color}${L.win?';font-weight:800':''}">${esc(shortName(L.name))}</text>`);
+
+  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img">
+    <g class="grid">${g}</g>${ph_str}
+    <g class="axis"><line x1="${ml}" y1="${mt+ph}" x2="${W-mr}" y2="${mt+ph}"/></g>
+    ${xl}${lines}${elab}
+    <line class="cross" style="display:none"/><g class="dots"></g>
+    <rect class="hit" x="${ml}" y="${mt}" width="${pw}" height="${ph}" fill="transparent"/>
+  </svg>`;
+  box.innerHTML = svg;
+  let tip = box.querySelector(".ttip");
+  if(!tip){ tip = document.createElement("div"); tip.className="ttip"; box.appendChild(tip); }
+
+  const svgEl = box.querySelector("svg"), cross = svgEl.querySelector(".cross"), dots = svgEl.querySelector(".dots");
+  const hit = svgEl.querySelector(".hit");
+  const shown = drawn;
+  hit.addEventListener("mousemove", e => {
+    const r = svgEl.getBoundingClientRect(), vx = (e.clientX - r.left) * (W / r.width);
+    let i = Math.round((vx - ml)/pw*(n-1)); i = Math.max(0, Math.min(n-1, i));
+    const xi = x(i);
+    cross.setAttribute("x1",xi); cross.setAttribute("x2",xi);
+    cross.setAttribute("y1",mt); cross.setAttribute("y2",mt+ph); cross.style.display="";
+    dots.innerHTML = shown.map(s=>`<circle class="dot" cx="${xi}" cy="${y(s.vals[i])}" r="3.4" fill="${s.color}"/>`).join("");
+    const rows = shown.map(s=>({name:s.name,color:s.color,win:s.win,v:s.vals[i]}))
+      .sort((a,b)=>b.v-a.v);
+    tip.innerHTML = `<div class="tth">${dLong(o.dates[i])}${i===0?" · før turneringen":""}</div>`
+      + rows.map(r=>`<div class="ttr"><span class="ttn"><span class="sw" style="background:${r.color}"></span>`
+        + `<span${r.win?' style="font-weight:700"':''}>${esc(shortName(r.name))}</span></span>`
+        + `<span class="ttv">${o.valFmt(r.v)}</span></div>`).join("");
+    const br = box.getBoundingClientRect();
+    let tx = e.clientX - br.left + 16, ty = e.clientY - br.top - 10;
+    if(tx + 170 > br.width) tx = e.clientX - br.left - 170;
+    tip.style.left = Math.max(4,tx)+"px"; tip.style.top = Math.max(4,ty)+"px"; tip.style.opacity="1";
+  });
+  hit.addEventListener("mouseleave", () => { cross.style.display="none"; dots.innerHTML=""; tip.style.opacity="0"; });
 }
 
 // Gruppespil tab: full standings (with advance %), the 3rd-place ladder, and all played
@@ -1013,11 +1280,17 @@ function renderTeams(){
   const isTrap = COMP === "trap";
   const metric = isTrap ? "trap" : "andreas";
   const single = MODE === "single" && SAMPLE && SAMPLE.team;
+  // Finished: the live xPoint column == realized (no matches left), so swap it for the model's
+  // pre-tournament (day-0) expected points per team, marked with a *.
+  const fin = LAST.tournament_over && !single;
+  const baseTeam = fin ? (((LAST.baseline||{}).team_xpts||{})[capComp()] || {}) : null;
   $("#teamsTitle").textContent =
-    single ? "Holdpoint i dette scenarie" : "Forventede holdpoint";
-  $("#teamsNote").textContent = single
+    single ? "Holdpoint i dette scenarie" : (fin ? "Holdpoint" : "Forventede holdpoint");
+  $("#teamsNote").innerHTML = single
     ? "Point hvert hold ville give i netop dette scenarie (tryk 🎲 for et nyt). Vælg 📊 Forventet for gennemsnittet over alle simuleringer."
-    : (isTrap
+    : fin
+      ? `${isTrap ? "Lag = seedningslag (L1 = bedste lag). " : "Pris = budgetomkostning. "}Point = de endelige, realiserede point · <b>xPoint*</b> = holdets forventede point <b>før turneringen</b> (dag 0, kun ud fra seedning/Elo) · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere.`
+      : (isTrap
         ? "Lag = seedningslag (L1 = bedste lag). Point = realiserede point indtil nu · xPoint = forventede slutpoint · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere; filtrér på lag eller kun valgte hold."
         : "Pris = budgetomkostning. Point = realiserede point indtil nu · xPoint = forventede slutpoint · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere; filtrér evt. til kun valgte hold.");
 
@@ -1044,9 +1317,12 @@ function renderTeams(){
     rows.sort((a,b)=>b.scen-a.scen);
     sort = {col:"scen", dir:-1}; clickable = false;
   } else {
+    // Post-final: overwrite the xPoint column value with the pre-tournament baseline per team.
+    if(fin) rows = rows.map(r => ({...r, [metric]: baseTeam[r.team] ?? r[metric]}));
+    const xl = fin ? "xPoint*" : "xPoint";
     cols = isTrap
-      ? [{k:"team",l:"Hold"},{k:"pot",l:"Lag",n:1},{k:"trap_real",l:"Point",n:1,d:2},{k:"trap",l:"xPoint",n:1,d:2},{k:"pick",l:"Valgt af",n:1}]
-      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"andreas_real",l:"Point",n:1,d:0},{k:"andreas",l:"xPoint",n:1,d:2},{k:"pick",l:"Valgt af",n:1}];
+      ? [{k:"team",l:"Hold"},{k:"pot",l:"Lag",n:1},{k:"trap_real",l:"Point",n:1,d:2},{k:"trap",l:xl,n:1,d:2},{k:"pick",l:"Valgt af",n:1}]
+      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"andreas_real",l:"Point",n:1,d:0},{k:"andreas",l:xl,n:1,d:2},{k:"pick",l:"Valgt af",n:1}];
     sort = SORT[metric];
     const {col,dir} = sort;
     rows.sort((a,b)=>{const x=a[col],y=b[col];
@@ -1138,6 +1414,23 @@ document.querySelectorAll(".kview").forEach(b =>
     $("#koResults").style.display = KO_VIEW === "results" ? "" : "none";
     if(KO_VIEW === "tree") requestAnimationFrame(() => drawConnectors($("#bracket")));
   }));
+// "Over tid" sub-toggle: Vinderchance (win%) vs Point (realized), then redraw the chart.
+document.querySelectorAll(".tvw").forEach(b =>
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".tvw").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); TREND_VIEW = b.dataset.tv;
+    if(LAST) renderTrend(LAST);
+  }));
+// "Over tid" name filter quick-actions: show everyone / clear (then pick a couple for head-to-head).
+document.querySelectorAll(".tlga").forEach(b =>
+  b.addEventListener("click", () => {
+    if(!LAST) return;
+    const hist = (LAST.history && LAST.history[capComp()]) || [];
+    const names = hist.length ? Object.keys(hist[hist.length-1].part) : [];
+    TREND_OFF.clear();
+    if(b.dataset.act === "none") names.forEach(nm => TREND_OFF.add(nm));
+    renderTrend(LAST);
+  }));
 let _bkResize;
 window.addEventListener("resize", () => {
   clearTimeout(_bkResize);
@@ -1168,6 +1461,7 @@ document.querySelectorAll(".gview").forEach(b =>
 function setComp(c){
   COMP = c === "andreas" ? "andreas" : "trap";
   WIN_FOR = null;   // a saved win scenario belongs to one comp's participant
+  TREND_OFF.clear();   // the over-tid name filter is per-comp (names differ)
   const u = new URL(location); u.searchParams.set("comp", COMP); history.replaceState(null, "", u);
   document.querySelectorAll(".cbtn").forEach(b => b.classList.toggle("active", b.dataset.comp === COMP));
   render();

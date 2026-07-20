@@ -1,0 +1,227 @@
+{
+"team_xpts": {
+"Trap": {
+"Mexico": 10.717,
+"Czechia": 5.406,
+"South Korea": 5.798,
+"South Africa": 1.562,
+"Canada": 9.15,
+"Bosnia and Herzegovina": 3.393,
+"Switzerland": 10.043,
+"Qatar": 1.141,
+"Brazil": 11.147,
+"Scotland": 5.323,
+"Haiti": 1.409,
+"Morocco": 6.37,
+"Paraguay": 5.9,
+"Turkey": 8.229,
+"Australia": 4.435,
+"United States": 5.521,
+"Ecuador": 9.967,
+"Germany": 9.762,
+"Ivory Coast": 4.228,
+"Curaçao": 0.792,
+"Netherlands": 9.67,
+"Sweden": 3.585,
+"Japan": 8.26,
+"Tunisia": 2.213,
+"Belgium": 9.638,
+"Iran": 6.24,
+"Egypt": 4.57,
+"New Zealand": 2.228,
+"Spain": 16.621,
+"Uruguay": 7.427,
+"Saudi Arabia": 2.03,
+"Cape Verde": 2.063,
+"Norway": 7.63,
+"France": 13.048,
+"Senegal": 6.077,
+"Iraq": 1.292,
+"Argentina": 14.724,
+"Austria": 5.103,
+"Algeria": 3.752,
+"Jordan": 2.458,
+"Colombia": 10.088,
+"Portugal": 10.254,
+"Uzbekistan": 3.151,
+"DR Congo": 2.173,
+"England": 12.093,
+"Croatia": 8.407,
+"Panama": 4.123,
+"Ghana": 1.059
+},
+"Andreas": {
+"Mexico": 16.427,
+"Czechia": 7.791,
+"South Korea": 8.44,
+"South Africa": 1.941,
+"Canada": 13.686,
+"Bosnia and Herzegovina": 4.431,
+"Switzerland": 15.309,
+"Qatar": 1.313,
+"Brazil": 17.807,
+"Scotland": 7.676,
+"Haiti": 1.729,
+"Morocco": 9.441,
+"Paraguay": 8.852,
+"Turkey": 12.832,
+"Australia": 6.437,
+"United States": 8.199,
+"Ecuador": 15.412,
+"Germany": 15.045,
+"Ivory Coast": 5.69,
+"Curaçao": 0.882,
+"Netherlands": 15.313,
+"Sweden": 4.946,
+"Japan": 12.836,
+"Tunisia": 2.882,
+"Belgium": 14.923,
+"Iran": 9.256,
+"Egypt": 6.523,
+"New Zealand": 2.927,
+"Spain": 28.535,
+"Uruguay": 11.277,
+"Saudi Arabia": 2.506,
+"Cape Verde": 2.552,
+"Norway": 11.721,
+"France": 21.784,
+"Senegal": 8.98,
+"Iraq": 1.57,
+"Argentina": 25.07,
+"Austria": 7.508,
+"Algeria": 5.267,
+"Jordan": 3.275,
+"Colombia": 16.052,
+"Portugal": 16.352,
+"Uzbekistan": 4.225,
+"DR Congo": 2.782,
+"England": 19.469,
+"Croatia": 12.841,
+"Panama": 5.626,
+"Ghana": 1.24
+}
+},
+"optimal": {
+"Trap": {
+"xpts": 61.32,
+"teams": [
+{
+"team": "Spain",
+"pot": 1
+},
+{
+"team": "Argentina",
+"pot": 1
+},
+{
+"team": "Mexico",
+"pot": 2
+},
+{
+"team": "Ecuador",
+"pot": 3
+},
+{
+"team": "Paraguay",
+"pot": 4
+},
+{
+"team": "Bosnia and Herzegovina",
+"pot": 5
+}
+]
+},
+"Andreas": {
+"xpts": 70.59,
+"teams": [
+{
+"team": "Argentina",
+"price": 625
+},
+{
+"team": "Mexico",
+"price": 250
+},
+{
+"team": "Ecuador",
+"price": 200
+},
+{
+"team": "Canada",
+"price": 150
+}
+],
+"cost": 1225
+}
+},
+"part": {
+"Trap": {
+"Christian": {
+"win": 51.06,
+"xpts": 60.27
+},
+"Lone": {
+"win": 14.02,
+"xpts": 51.19
+},
+"Freja": {
+"win": 8.09,
+"xpts": 45.69
+},
+"Søren": {
+"win": 7.25,
+"xpts": 50.81
+},
+"Lauritz": {
+"win": 8.89,
+"xpts": 49.82
+},
+"Louise": {
+"win": 10.69,
+"xpts": 50.91
+}
+},
+"Andreas": {
+"Fred": {
+"win": 9.49,
+"xpts": 62.82
+},
+"Emil": {
+"win": 10.2,
+"xpts": 49.41
+},
+"SadoTheShadow": {
+"win": 1.87,
+"xpts": 40.48
+},
+"Stefan Winston Bligaard Netopil": {
+"win": 14.44,
+"xpts": 60.92
+},
+"Manni": {
+"win": 8.21,
+"xpts": 54.62
+},
+"Rasmus Bundgaard": {
+"win": 1.64,
+"xpts": 40.06
+},
+"Bjørnen i det blå hus": {
+"win": 4.97,
+"xpts": 45.72
+},
+"Nicolai Lind Mosbjerg": {
+"win": 7.7,
+"xpts": 59.18
+},
+"Kenneth Sadolin Pedersen": {
+"win": 5.67,
+"xpts": 46.0
+},
+"Andreas \"the master\" Simonsen": {
+"win": 35.81,
+"xpts": 69.63
+}
+}
+}
+}
