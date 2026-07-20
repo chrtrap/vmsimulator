@@ -383,8 +383,6 @@
           <div class="panel" id="modelFav"></div>
           <div class="panel" id="modelHit"></div>
           <div class="panel" id="modelCal"></div>
-          <div class="panel" id="modelPool"></div>
-          <div class="panel" id="modelVar"></div>
         </div>
 
         <div class="view" id="v-path">
@@ -406,6 +404,7 @@
             <span class="flbl">Visning</span>
             <span class="pview active" data-view="table">Stilling</span>
             <span class="pview" data-view="matrix">Analyse</span>
+            <span class="pview" data-view="analyse">Analyse</span>
             <span class="pview" data-view="teams">Holdpoint</span>
             <span class="pview" data-view="rules">Regler</span>
           </div>
@@ -430,6 +429,10 @@
           </div>
           <div id="pools"></div>
           <div id="poolMatrix" style="display:none"></div>
+          <div id="poolAnalyse" style="display:none">
+            <div class="panel" id="modelPool"></div>
+            <div class="panel" id="modelVar"></div>
+          </div>
           <div id="poolTrend" style="display:none">
             <div class="tfilter" id="trendView">
               <span class="flbl">Vis</span>
@@ -655,10 +658,12 @@ function render(){
   const fin = !!d.tournament_over;
   let pv = POOL_VIEW;
   if(single && pv === "matrix") pv = "table";
+  if(pv === "analyse" && !fin) pv = "table";   // the Analyse sub-view is post-tournament only
   const anaBtn = document.querySelector('#poolView .pview[data-view="matrix"]');
   if(anaBtn) anaBtn.textContent = fin ? "Udvikling" : "Analyse";
+  // Hide the matrix slot in single mode, and the "Analyse" (competition-analysis) slot until finished.
   document.querySelectorAll("#poolView .pview").forEach(b => {
-    b.style.display = (b.dataset.view === "matrix" && single) ? "none" : "";
+    b.style.display = ((b.dataset.view === "matrix" && single) || (b.dataset.view === "analyse" && !fin)) ? "none" : "";
     b.classList.toggle("active", b.dataset.view === pv);
   });
   $("#poolSort").style.display   = (pv === "table" && !single) ? "flex" : "none";
@@ -675,10 +680,13 @@ function render(){
   $("#pools").style.display      = (pv === "table") ? "" : "none";
   $("#poolMatrix").style.display = (pv === "matrix" && !fin) ? "" : "none";
   $("#poolTrend").style.display  = trendOn ? "" : "none";
+  $("#poolAnalyse").style.display = (pv === "analyse") ? "" : "none";
   $("#poolTeams").style.display  = (pv === "teams") ? "" : "none";
   $("#poolRules").style.display  = (pv === "rules") ? "" : "none";
   $("#poolNote").style.display   = (pv === "table") ? "" : "none";
-  if(pv === "matrix") (fin ? renderTrend(d) : renderInsights(d)); else renderPools(d, scenario);
+  if(pv === "matrix") (fin ? renderTrend(d) : renderInsights(d));
+  else if(pv === "analyse") renderCompAnalysis(d);
+  else renderPools(d, scenario);
   renderStages(d);
   renderGroupsTab(d);
   renderKnockoutResults(d);
@@ -1095,10 +1103,14 @@ function renderModel(d){
   }
   $("#modelCal").innerHTML = `<h2>Kalibrering — er sandsynlighederne til at stole på?</h2>` + calSvg(bins) +
     `<p class="note">Modellen giver hvert hold en chance for at nå hvert stadie (fx "Spanien 66% i kvartfinalen"). Her er alle ${pts.length} forudsigelser (48 hold × 6 stadier) samlet i grupper efter hvor sikker modellen var — og for hver gruppe: hvor stor en andel skete rent faktisk? <b>Vandret</b> = modellens sandsynlighed, <b>lodret</b> = hvor ofte det så skete. Ligger en prik på den stiplede linje, ramte modellen plet; <b>under</b> linjen var modellen for optimistisk, <b>over</b> for forsigtig. Prikkens størrelse = antal forudsigelser i gruppen (de fleste er langskud tæt på 0%). Bemærk: det bygger kun på ét VM, så tallene rummer en del tilfældighed — se grafen som en indikation, ikke en endelig dom over modellen.</p>`;
+}
 
-  // Pool predictability — comp-specific (reacts to the Trap/Andreas toggle). The Andreas scoring's
-  // big advance/eliminate bonuses make its pool outcome noisier, which the winner's low pre-tour
-  // odds surface. Named only via the current pool's own participants (privacy-safe on locked links).
+// Competition analysis (Konkurrence → Analyse sub-view): pool predictability + boom/bust variance.
+// Comp-specific — reacts to the Trap/Andreas toggle; named only via the current competition's own
+// participants, so it's privacy-safe on locked links.
+function renderCompAnalysis(d){
+  // Pool predictability. The Andreas scoring's big advance/eliminate bonuses make its outcome
+  // noisier, which the winner's low pre-tournament odds surface.
   const pn = capComp(), pool = (d.pools||{})[pn], bpart = ((d.baseline||{}).part||{})[pn] || {};
   if(pool && pool.rows && Object.keys(bpart).length){
     const winner = pool.rows.find(r => r.real_rank === 1);
