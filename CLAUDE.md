@@ -215,6 +215,16 @@ sim-count control bar and the "Scenarie hvor X vinder" buttons; the champion ban
     konkurrencen?" (winner's pre-tour odds · did the favourite win · gap to the realized-optimal) + "Boom
     eller bust" (per-team std-dev risk/reward scatter, **flags as marks**, `varScatter`).
   - *Holdpoint* (`renderTeams`) xPoint column → pre-tournament per-team value (labelled `xPoint*`).
+    **Andreas-only `Pt/pris` column** (point pr. 100 budget = realized point ÷ price × 100; `scen`-based in
+    single mode) sits right after Point, left of xPoint — sortable value-for-money. Trap is pot-seeded (no
+    price) so the column is absent there. **Andreas-only price-range slider** (`#priceFilter`, dual overlapping
+    range inputs over a custom `.rslide` track+fill; state `PRICE_LO/PRICE_HI`, `syncPriceSlider()` derives the
+    domain from the payload + defaults to full min/max, filters rows in `renderTeams`) sits under the Hold
+    filter — visibility gated to `pv==="teams" && COMP==="andreas"` in `render()`. Insight it surfaced: under
+    the 1300 budget cap, value pr. pris ≈
+    the winning strategy — the realized-optimal squad (Spain+Morocco+Switzerland+Cape Verde, 90 pts) and the
+    Andreas winner (Fred, 89) were both built from the value frontier (1 elite-value favourite + mid-value
+    overperformers + a cheap filler), while losers overpaid for top-tier flops (Brazil/Germany/Portugal).
 - **Modellen tab (top-level, finished-only, comp-AGNOSTIC, `renderModel`):** how well the Elo model
   predicted the *tournament*. Panels: headline (champion's pre-tour title rank/odds · favourite hit-rate) ·
   Titelfavoritter vs virkeligheden · Træfsikkerhed pr. stadie · **Kalibrering** reliability diagram
@@ -246,3 +256,9 @@ data has the right shape. The real work is the ENGINE, which is hardcoded to WC2
   team favourites as the backbone of picks. Andreas is far higher-variance than Trap (avg swing ±6.1 vs
   ±3.5) → in Andreas the "optimal xPoints" squad is a weaker guide and calculated high-ceiling bets pay;
   in Trap the model's projection is a tighter guide.
+- **Andreas value pr. pris (built into Holdpoint as `Pt/pris`):** the 1300 budget cap makes point-per-price
+  the effective objective. Best build = value frontier per price tier — 1 elite-value favourite (Spain
+  750→44, 5.9/100), 2 mid-tier overperformers (Switzerland 250→21 @8.4, Morocco 275→19 @6.9, Mexico
+  250→18 @7.2), + 1 cheap filler (Cape Verde 25→6 @24). Avoid dear flops (Uruguay 0.7, Turkey 1.2,
+  Germany 2.0, Portugal 2.2, Brazil 2.6). Raw ratio over-rewards ultra-cheap teams (low absolute), so read
+  it per tier, not globally. Not applicable to Trap (pot-seeded, no price).

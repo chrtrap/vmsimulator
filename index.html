@@ -228,6 +228,17 @@
   .psort,.pview,.cbasis,.gview,.pickf,.kview,.tvw{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 13px;font-size:12.5px;cursor:pointer}
   .psort:hover,.pview:hover,.cbasis:hover,.gview:hover,.pickf:hover,.kview:hover,.tvw:hover{color:var(--txt)}
   .psort.active,.pview.active,.cbasis.active,.gview.active,.pickf.active,.kview.active,.tvw.active{color:var(--txt);border-color:var(--accent);background:var(--tint)}
+  /* Holdpoint price range: two overlapping range inputs over a custom track+fill (Andreas only). */
+  .rslide{position:relative;width:168px;height:20px}
+  .rslide .rtrack,.rslide .rfill{position:absolute;top:8px;height:4px;border-radius:2px}
+  .rslide .rtrack{left:0;right:0;background:var(--line)}
+  .rslide .rfill{background:var(--accent)}
+  .rslide input[type=range]{position:absolute;top:0;left:0;width:100%;height:20px;margin:0;background:none;pointer-events:none;-webkit-appearance:none;appearance:none}
+  .rslide input[type=range]::-webkit-slider-runnable-track{height:20px;background:none;border:none}
+  .rslide input[type=range]::-moz-range-track{height:20px;background:none;border:none}
+  .rslide input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;margin-top:3px;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--panel2);box-shadow:0 1px 2px rgba(0,0,0,.3);cursor:pointer}
+  .rslide input[type=range]::-moz-range-thumb{pointer-events:auto;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--panel2);cursor:pointer}
+  .rval{font-size:12.5px;color:var(--dim);min-width:78px;white-space:nowrap}
   /* Standings: "how this participant can win" button + muted note when they never won. */
   .winbtn{margin-top:9px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer}
   .winbtn:hover{color:var(--txt);border-color:var(--accent);background:var(--tint)}
@@ -426,6 +437,16 @@
             <span class="flbl">Hold</span>
             <span class="pickf active" data-picked="all">Alle</span>
             <span class="pickf" data-picked="picked">Kun valgte</span>
+          </div>
+          <div class="tfilter" id="priceFilter" style="display:none">
+            <span class="flbl">Pris</span>
+            <div class="rslide" id="priceSlide">
+              <div class="rtrack"></div>
+              <div class="rfill" id="priceFill"></div>
+              <input type="range" id="priceLo" step="25" aria-label="Min. pris">
+              <input type="range" id="priceHi" step="25" aria-label="Maks. pris">
+            </div>
+            <span class="rval" id="priceVal">–</span>
           </div>
           <div id="pools"></div>
           <div id="poolMatrix" style="display:none"></div>
@@ -677,6 +698,7 @@ function render(){
   const trendOn = pv === "matrix" && fin;    // the "matrix" slot shows the over-tid graphs post-final
   $("#potFilter").style.display  = (pv === "teams" && COMP === "trap") ? "flex" : "none";
   $("#pickedFilter").style.display = (pv === "teams") ? "flex" : "none";
+  $("#priceFilter").style.display = (pv === "teams" && COMP === "andreas") ? "flex" : "none";
   $("#pools").style.display      = (pv === "table") ? "" : "none";
   $("#poolMatrix").style.display = (pv === "matrix" && !fin) ? "" : "none";
   $("#poolTrend").style.display  = trendOn ? "" : "none";
@@ -1481,6 +1503,8 @@ function renderKnockoutResults(d){
 
 let TRAP_POT = "all";
 let TEAMS_PICKED = "all";   // Holdpoint filter: 'all' teams vs 'picked' (only teams a participant selected)
+// Andreas Holdpoint price range (null = not yet initialised → defaults to full min/max on first render).
+let PRICE_LO = null, PRICE_HI = null;
 const SORT = {trap:{col:"trap", dir:-1}, andreas:{col:"andreas", dir:-1}};
 function cell(r,c){
   if(c.k==="team") return ft(r.team);
@@ -1489,6 +1513,29 @@ function cell(r,c){
   const v=r[c.k];
   if(v==null) return "–";
   return c.d!=null ? dkf(v, c.d) : v;
+}
+// Andreas Holdpoint price-range slider. Derives the price domain from the payload, resets the range to
+// full min/max the first time (or if it falls outside the current domain), pushes min/max/value onto the
+// two overlapping range inputs, and redraws the fill bar + label. Called from renderTeams (Andreas only).
+function syncPriceSlider(){
+  const prices = LAST.teams.map(t => t.price).filter(p => p != null);
+  if(!prices.length) return;
+  const pmin = Math.min(...prices), pmax = Math.max(...prices);
+  if(PRICE_LO == null || PRICE_LO < pmin || PRICE_LO > pmax) PRICE_LO = pmin;
+  if(PRICE_HI == null || PRICE_HI > pmax || PRICE_HI < pmin) PRICE_HI = pmax;
+  if(PRICE_LO > PRICE_HI) PRICE_LO = PRICE_HI;
+  const lo = $("#priceLo"), hi = $("#priceHi");
+  if(lo && hi){
+    lo.min = hi.min = pmin; lo.max = hi.max = pmax;
+    lo.value = PRICE_LO; hi.value = PRICE_HI;
+    const span = (pmax - pmin) || 1;
+    const l = (PRICE_LO - pmin) / span * 100, r = (PRICE_HI - pmin) / span * 100;
+    const fill = $("#priceFill");
+    if(fill){ fill.style.left = l + "%"; fill.style.width = (r - l) + "%"; }
+    const val = $("#priceVal");
+    if(val) val.textContent = (PRICE_LO === pmin && PRICE_HI === pmax)
+      ? `alle (${dk(pmin)}–${dk(pmax)})` : `${dk(PRICE_LO)}–${dk(PRICE_HI)}`;
+  }
 }
 function renderTeams(){
   if(!LAST) return;
@@ -1504,10 +1551,10 @@ function renderTeams(){
   $("#teamsNote").innerHTML = single
     ? "Point hvert hold ville give i netop dette scenarie (tryk 🎲 for et nyt). Vælg 📊 Forventet for gennemsnittet over alle simuleringer."
     : fin
-      ? `${isTrap ? "Lag = seedningslag (L1 = bedste lag). " : "Pris = budgetomkostning. "}Point = de endelige, realiserede point · <b>xPoint*</b> = holdets forventede point <b>før turneringen</b> · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere.`
+      ? `${isTrap ? "Lag = seedningslag (L1 = bedste lag). " : "Pris = budgetomkostning. "}Point = de endelige, realiserede point · ${isTrap ? "" : "<b>Pt/pris</b> = point pr. 100 budget (value) · "}<b>xPoint*</b> = holdets forventede point <b>før turneringen</b> · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere${isTrap ? "." : "; filtrér på pris-interval eller kun valgte hold."}`
       : (isTrap
         ? "Lag = seedningslag (L1 = bedste lag). Point = realiserede point indtil nu · xPoint = forventede slutpoint · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere; filtrér på lag eller kun valgte hold."
-        : "Pris = budgetomkostning. Point = realiserede point indtil nu · xPoint = forventede slutpoint · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere; filtrér evt. til kun valgte hold.");
+        : "Pris = budgetomkostning. Point = realiserede point indtil nu · Pt/pris = point pr. 100 budget (value) · xPoint = forventede slutpoint · Valgt af = antal (og andel) deltagere der valgte holdet. Klik på en kolonne for at sortere; filtrér på pris-interval eller kun valgte hold.");
 
   // Pick popularity: how many participants in the current competition picked each team
   // (and what share — 100% = everyone). Counted across the pool's roster rows.
@@ -1521,23 +1568,30 @@ function renderTeams(){
     pickPct: nPart ? Math.round((pickCnt[r.team] || 0) / nPart * 100) : 0}));
   if(isTrap && TRAP_POT !== "all") rows = rows.filter(r => String(r.pot) === TRAP_POT);
   if(TEAMS_PICKED === "picked") rows = rows.filter(r => r.pick > 0);
+  // Andreas only: price-range slider. Sync the control to the current price domain, then filter.
+  if(!isTrap){ syncPriceSlider(); rows = rows.filter(r => r.price >= PRICE_LO && r.price <= PRICE_HI); }
 
   let cols, sort, clickable;
   if(single){
     const sc = SAMPLE.team[metric] || {};
     rows = rows.map(r => ({...r, scen: sc[r.team] ?? 0}));
+    // Andreas only: point pr. pris (per 100 budget) — Trap is pot-seeded, no price.
+    if(!isTrap) rows = rows.map(r => ({...r, ppp: r.price ? r.scen / r.price * 100 : null}));
     cols = isTrap
       ? [{k:"team",l:"Hold"},{k:"pot",l:"Lag",n:1},{k:"scen",l:"Point",n:1,d:2},{k:"pick",l:"Valgt af",n:1}]
-      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"scen",l:"Point",n:1,d:0},{k:"pick",l:"Valgt af",n:1}];
+      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"scen",l:"Point",n:1,d:0},{k:"ppp",l:"Pt/pris",n:1,d:2},{k:"pick",l:"Valgt af",n:1}];
     rows.sort((a,b)=>b.scen-a.scen);
     sort = {col:"scen", dir:-1}; clickable = false;
   } else {
     // Post-final: overwrite the xPoint column value with the pre-tournament baseline per team.
     if(fin) rows = rows.map(r => ({...r, [metric]: baseTeam[r.team] ?? r[metric]}));
+    // Andreas only: point pr. pris (per 100 budget), from realized Point — placed right after Point,
+    // left of xPoint. Trap is pot-seeded (no price), so no value column there.
+    if(!isTrap) rows = rows.map(r => ({...r, ppp: r.price ? (r.andreas_real ?? 0) / r.price * 100 : null}));
     const xl = fin ? "xPoint*" : "xPoint";
     cols = isTrap
       ? [{k:"team",l:"Hold"},{k:"pot",l:"Lag",n:1},{k:"trap_real",l:"Point",n:1,d:2},{k:"trap",l:xl,n:1,d:2},{k:"pick",l:"Valgt af",n:1}]
-      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"andreas_real",l:"Point",n:1,d:0},{k:"andreas",l:xl,n:1,d:2},{k:"pick",l:"Valgt af",n:1}];
+      : [{k:"team",l:"Hold"},{k:"price",l:"Pris",n:1},{k:"andreas_real",l:"Point",n:1,d:0},{k:"ppp",l:"Pt/pris",n:1,d:2},{k:"andreas",l:xl,n:1,d:2},{k:"pick",l:"Valgt af",n:1}];
     sort = SORT[metric];
     const {col,dir} = sort;
     rows.sort((a,b)=>{const x=a[col],y=b[col];
@@ -1658,6 +1712,13 @@ document.querySelectorAll(".potf").forEach(b =>
     document.querySelectorAll(".potf").forEach(x=>x.classList.remove("active"));
     b.classList.add("active"); TRAP_POT = b.dataset.pot; renderTeams();
   }));
+// Andreas Holdpoint price range: two overlapping thumbs. Keep lo≤hi (min/max lets a thumb cross over),
+// then re-render (syncPriceSlider redraws the fill + label from state).
+["#priceLo","#priceHi"].forEach(sel => { const el = $(sel); if(el) el.addEventListener("input", () => {
+  const a = +$("#priceLo").value, b = +$("#priceHi").value;
+  PRICE_LO = Math.min(a, b); PRICE_HI = Math.max(a, b);
+  renderTeams();
+}); });
 document.querySelectorAll(".pickf").forEach(b =>
   b.addEventListener("click", () => {
     document.querySelectorAll(".pickf").forEach(x=>x.classList.remove("active"));
