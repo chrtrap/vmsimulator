@@ -129,6 +129,9 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
     semi_final_stats = {}
     andreas_points = {t:0 for t in all_teams}
     trap_points = {t:0 for t in all_teams}
+    # Sum of squares of each team's per-sim points, for the boom/bust variance view (std dev).
+    andreas_sq = {t:0.0 for t in all_teams}
+    trap_sq = {t:0.0 for t in all_teams}
 
     # --- Real results from results.tsv ---
     # played:      scorelines of matches already played -> used as-is, not simulated.
@@ -602,6 +605,9 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
         if pools is not None:  # score each participant for THIS simulation, then rank
             sim_a = {t: andreas_points[t] - snap_a[t] for t in andreas_points}
             sim_t = {t: trap_points[t] - snap_t[t] for t in trap_points}
+            for t in all_teams:                       # accumulate squares for the variance view
+                andreas_sq[t] += sim_a[t] * sim_a[t]
+                trap_sq[t] += sim_t[t] * sim_t[t]
             metric = {'andreas': sim_a, 'trap': sim_t}
             for pn, pd in pools.items():
                 m = metric[pd['metric']]
@@ -656,6 +662,8 @@ def simulate_tournament(groups, third_place_pairings, elo_dict, team_dict, fixtu
         if pools is not None:
             extra['pools'] = pool_agg
             extra['h2h'] = h2h_agg
+            extra['andreas_sq'] = andreas_sq   # sum of per-sim squared points (for std dev)
+            extra['trap_sq'] = trap_sq
         return winners, andreas_points, trap_points, timestart, extra
     return winners, andreas_points, trap_points, timestart
 

@@ -14,6 +14,7 @@ Smoke: N_HIST=500 build_history.py
 Frozen once the tournament is over; regenerate only if a result/pick changes.
 """
 import json
+import math
 import os
 import sys
 
@@ -98,8 +99,14 @@ def write_baseline(snap, team_xpts, extra):
     sr = extra.get("stage_reach", {})
     stage_reach = {str(t): {key: round(d.get(rname, 0) / N * 100, 2) for rname, key in STAGE_KEYS}
                    for t, d in sr.items()}
+    # Boom/bust: per-team std dev of fantasy points across sims (spread of each pick's outcome),
+    # from the sum of squares. std = sqrt(E[x^2] - mean^2); mean is team_xpts.
+    sq = {"Trap": extra.get("trap_sq", {}), "Andreas": extra.get("andreas_sq", {})}
+    team_std = {c: {str(t): round(math.sqrt(max(0.0, sq[c].get(t, 0.0) / N - v * v)), 3)
+                    for t, v in team_xpts[c].items()} for c in COMPS}
     baseline = {
         "team_xpts": {c: {t: round(v, 3) for t, v in team_xpts[c].items()} for c in COMPS},
+        "team_std": team_std,          # {comp: {team: std dev of pre-tournament fantasy points}}
         "optimal": {"Trap": _fmt_opt(S.optimal_trap(team_xpts["Trap"]), False),
                     "Andreas": _fmt_opt(S.optimal_andreas(team_xpts["Andreas"]), True)},
         "part": {c: {nm: {"win": p["win"], "xpts": p["xpts"]} for nm, p in snap[c]["part"].items()}

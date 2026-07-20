@@ -318,6 +318,12 @@
   .calwrap .cgl{stroke:var(--line);stroke-width:1}
   .calwrap .cax{fill:var(--dim);font-size:10px}
   .calwrap .cdot{stroke:var(--panel);stroke-width:1.5}
+  .varwrap{position:relative;width:100%;overflow-x:auto}
+  .varwrap svg{display:block;width:100%;min-width:560px;height:auto;font-variant-numeric:tabular-nums}
+  .varwrap .vgl{stroke:var(--line);stroke-width:1}
+  .varwrap .vax{fill:var(--dim);font-size:10px}
+  .varwrap .vdot{stroke:var(--panel);stroke-width:1.2}
+  .varwrap .vlbl{fill:var(--txt);font-size:10.5px}
   .err{color:#ff7a7a}
   .heat{font-variant-numeric:tabular-nums;text-align:right;border-radius:4px}
 </style>
@@ -374,10 +380,11 @@
 
         <div class="view" id="v-model">
           <div class="panel" id="modelHead"></div>
-          <div class="panel" id="modelPool"></div>
           <div class="panel" id="modelFav"></div>
           <div class="panel" id="modelHit"></div>
           <div class="panel" id="modelCal"></div>
+          <div class="panel" id="modelPool"></div>
+          <div class="panel" id="modelVar"></div>
         </div>
 
         <div class="view" id="v-path">
@@ -1106,6 +1113,49 @@ function renderModel(d){
       </div>
       <p class="note">Puljer med store bonusser for at avancere/ryge ud svinger mere — enkelte holdvalg bliver mere alt-eller-intet, så udfaldet afhænger mere af held end af de rigtige favoritter.${lockHint}</p>`;
   } else $("#modelPool").innerHTML = "";
+
+  // Boom/bust: per-team spread (std dev) of pre-tournament fantasy points vs the expected value —
+  // a risk/reward map. High up = swingy pick; far right = high expected. Comp-specific.
+  const tstd = ((d.baseline||{}).team_std||{})[pn] || {}, txp = ((d.baseline||{}).team_xpts||{})[pn] || {};
+  const vt = Object.keys(tstd).filter(t => txp[t] !== undefined).map(t => ({t, m:txp[t], s:tstd[t]}));
+  if(vt.length){
+    const avgStd = vt.reduce((a,x)=>a+x.s,0)/vt.length;
+    const boom = vt.slice().sort((a,b)=> b.s - a.s)[0];   // biggest swinger
+    $("#modelVar").innerHTML = `<h2>Boom eller bust — hvor meget svinger holdvalgene? <small>gælder ${COMP_LOCKED?"den viste":"den valgte"} pulje</small></h2>
+      <div class="mhead">
+        <div class="mstat"><div class="v">±${dkf(avgStd, pdec(true))}<span class="u"> point</span></div><div class="l">gennemsnitligt udsving pr. hold (std.afv.) — jo højere, jo mere afhænger puljen af held</div></div>
+        <div class="mstat"><div class="v">${boom?ft(boom.t):"—"}</div><div class="l">det mest alt-eller-intet holdvalg: ${boom?`forventet ${dkf(boom.m, pdec(true))} ± ${dkf(boom.s, pdec(true))}`:""} point</div></div>
+      </div>
+      ${varScatter(vt)}
+      <p class="note">Hvert punkt = et hold. Vandret = forventede point (xPoint), lodret = udsving (± std.afv.). <b>Højt oppe</b> = alt-eller-intet (fx bobbelhold hvor avancement giver store bonusser). Ideelle sikre valg ligger nede til højre; rene gambles øverst til venstre. Hold musen over et punkt for detaljer.</p>`;
+  } else $("#modelVar").innerHTML = "";
+}
+
+// Risk/reward scatter for the boom/bust view: x = expected points, y = spread (std dev).
+function varScatter(vt){
+  const W=640,H=380,ml=40,mb=34,mt=14,mr=16,pw=W-ml-mr,ph=H-mt-mb;
+  const xM = axisMax(Math.max(1, ...vt.map(p=>p.m))), yM = axisMax(Math.max(0.5, ...vt.map(p=>p.s)));
+  const x=v=>ml+v/xM*pw, y=v=>mt+(1-v/yM*1.0)*ph;
+  let g="";
+  for(let k=0;k<=4;k++){ const vx=xM*k/4, vy=yM*k/4;
+    g+=`<line class="vgl" x1="${x(vx)}" y1="${mt}" x2="${x(vx)}" y2="${mt+ph}"/><line class="vgl" x1="${ml}" y1="${y(vy)}" x2="${ml+pw}" y2="${y(vy)}"/>`;
+    g+=`<text class="vax" x="${x(vx)}" y="${H-mb+14}" text-anchor="middle">${dk(Math.round(vx))}</text><text class="vax" x="${ml-5}" y="${y(vy)+3}" text-anchor="end">${dkf(vy, vy<10?1:0)}</text>`; }
+  // label the 5 swingiest teams (highest std); the rest are dots-only (hover for detail).
+  // Right-edge labels flip to the left so they don't clip off the plot.
+  const lab = new Set(vt.slice().sort((a,b)=>b.s-a.s).slice(0,5).map(p=>p.t));
+  const dots = vt.map(p=>{
+    const cx=x(p.m), cy=y(p.s);
+    const tip = `${da(p.t)}: forventet ${dkf(p.m,1)} ± ${dkf(p.s,1)} point`;
+    let l = "";
+    if(lab.has(p.t)){
+      const right = cx > W - mr - 72;
+      l = `<text class="vlbl" x="${right?cx-7:cx+7}" y="${cy+3.5}" text-anchor="${right?'end':'start'}">${da(p.t)}</text>`;
+    }
+    return `<circle class="vdot" cx="${cx}" cy="${cy}" r="4.2" fill="var(--accent)" fill-opacity="0.8"><title>${tip}</title></circle>${l}`;
+  }).join("");
+  return `<div class="varwrap"><svg viewBox="0 0 ${W} ${H}" role="img"><g>${g}</g>${dots}
+    <text class="vax" x="${ml+pw/2}" y="${H-1}" text-anchor="middle">Forventede point (xPoint)</text>
+    <text class="vax" transform="translate(11,${mt+ph/2}) rotate(-90)" text-anchor="middle">Udsving (± std.afv.)</text></svg></div>`;
 }
 
 function calSvg(bins){
