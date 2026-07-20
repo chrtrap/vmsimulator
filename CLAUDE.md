@@ -44,15 +44,25 @@ team names are stored internally in **English** and translated for display.
   - `load_data()`, `load_knockout(path)`, `_pool_sort_key(...)` (tiebreak key),
     `_order_group(...)` (deterministic group order).
   - `TRAP_OPTIONS` / `ANDREAS_OPTIONS` — participant rosters (edit here to change picks).
+  - `simulate_tournament` also returns (in `extra`, when `pools`) `andreas_sq`/`trap_sq` = Σ of each
+    team's per-sim points² — used only to derive per-team std dev for the boom/bust view.
 - `match_simulator.py` — single match: Elo→Poisson goals, knockout ET/penalties, `update_elo` (K=22).
 - `server.py` — stdlib HTTP server. `run_simulation(n, n_samples)`, `build_payload(n_stats, n_samples)`,
-  cached `/data.json`. Loads `PRICES`, `POTS`, `KNOCKOUT`, and realized points at import.
-  The pure-Python `optimal_andreas` / `optimal_trap` replace the old CPLEX solver.
+  cached `/data.json`. Loads `PRICES`, `POTS`, `KNOCKOUT`, realized points, **`HISTORY`** (data/history.jsonl),
+  **`BASELINE`** (data/baseline.json), and **`TOURNAMENT_OVER`** at import; also computes **`actual_reach`**
+  (per-team furthest stage index) in the payload. The pure-Python `optimal_andreas` / `optimal_trap` replace
+  the old CPLEX solver.
 - `build.py` — writes `site/data.json` + `site/index.html`. Env: `N_STATS` (default 10000;
   **CI sets 100000** in `deploy.yml` for stable odds — build step takes ~2–3 min), `N_SAMPLES` (default **200**).
+- `build_history.py` — **post-tournament backfill.** Writes `data/history.jsonl` (one 100k Monte-Carlo
+  snapshot per match date, reconstructed by *date-filtering* results.tsv + knockout.csv — no git replay) and
+  `data/baseline.json` (the rich day-0 snapshot). `N_HIST=100000 build_history.py` for the full run
+  (~40 min); `BASELINE_ONLY=1 N_HIST=100000 build_history.py` regenerates just baseline.json (~2.5 min).
+  Frozen once the tournament is over; rerun only if a result or pick changes. See "Post-tournament analysis".
 - `index.html` — single-page UI (inline CSS/JS), fetches `data.json`.
 - `data/` — `groups.txt`, `prisliste.txt` (Andreas prices), `trap_seeding.txt` (Trap pots, Danish names),
-  `knockout.csv` (hand-maintained KO results), `parsed_wc2026_combinations.txt` (3rd-place bracket pairings).
+  `knockout.csv` (hand-maintained KO results), `parsed_wc2026_combinations.txt` (3rd-place bracket pairings),
+  **`history.jsonl`** + **`baseline.json`** (built by `build_history.py`; committed, powers the retrospective).
 - `Elo files/` — eloratings TSVs: `2026_World_Cup.tsv` (base Elo), `_fixtures`, `_results` (group stage).
 - `solve_point_competitions.py` — **dead code** (needs commercial CPLEX `docplex`); superseded by `server.py`.
 
@@ -93,6 +103,11 @@ by `scheduled_final_date()` — powers the predicted-final row in the Knockout l
 `optimal` (by xPts), `optimal_real` (by realized pts)), `samples` (≈200 scenarios: {bracket, scores:{pool:{participant:pts}}, order:{pool:[participants in finishing order, winner first — incl. tiebreakers, since `scores` is points-only]}, team:{andreas:{},trap:{}}}),
 `win_scenarios` {pool: {participant: one sample-shaped scenario — the first sim that participant finished 1st;
 uncapped, so any participant who wins ≥1 of the N sims has one. Powers the "Scenarie hvor X vinder" button}}.
+Post-tournament additions: **`tournament_over`** (bool; true once a FINAL row is pinned — gates all the
+retrospective UI), **`history`** {comp: [dated snapshots {date, comp, title_top, part:{name:{win,xpts,real}}}]}
+(from history.jsonl, powers "Udvikling"), **`baseline`** (from baseline.json: `team_xpts`, `team_std`,
+`optimal`, `part:{comp:{name:{win,xpts}}}`, `stage_reach:{team:{r32,r16,qf,sf,final,champ}%}` — powers the
+pre-tournament swaps + the Modellen tab), **`actual_reach`** {team: furthest stage index 0 group…6 champion}.
 
 ## Frontend (index.html)
 - Mode toggle: **📊 Forventet** (10k aggregate) vs **🎲 Ny tilfældig turnering** (one random scenario from
@@ -168,17 +183,65 @@ pins (33 instead of 30).
 - Keep code pandas-3 safe (use `.itertuples`, `dict(zip(...))`, label-based access — no positional Series `[0]`).
 
 ## Current state / open items
-- Group stage complete (72/72). **Knockout underway** (R16 as of 2026-07-06): `knockout.csv` holds the
-  played KO games (16× R32 + R16 rows). Add a row per game as it's played (that's the whole update
-  loop), commit, push.
-- **Known model characteristic (decided to leave):** the goal model is a bit overconfident vs its own
-  Elo basis — single-match favourite win% runs ~3–4 pts above the Elo expectation, worst at large gaps
-  (e.g. Argentina ~98% vs Cape Verde in R32; Elo says ~95%). Root cause: `match_simulator.py` maps Elo→
-  goals linearly and symmetrically (`λ = 1.35 ± Δ/400`, underdog floored at 0.1), so the goal margin is
-  too steep. The single lever is the **`/400` divisor** (≈`/500` would track Elo closely). Maintainer
-  chose to keep it — the high numbers are mostly the genuinely large Elo gaps, not a bug.
-- CI shows a harmless "Node 20 → 24" deprecation warning (checkout@v4 / setup-python@v5); bump action
-  versions in `deploy.yml` eventually. Harmless — does not affect the build or deploy.
-- **Euro reuse:** UI wording is tournament-agnostic, but the engine is hardcoded to WC2026's shape
-  (12 groups, R32, best-8 thirds, host trio). Reusing for the Euros (24 teams, 6 groups, R16, best-4 thirds)
-  is a real refactor — parameterize format + new fixtures/Elo/pot data.
+- **TOURNAMENT COMPLETE (2026-07-19). Spain beat Argentina in the final (0-0, ET 1-0); England beat
+  France 6-4 in the bronze (2026-07-18).** `knockout.csv` holds all 32 KO games incl. bronze + final.
+  The site is now a **frozen post-tournament retrospective** — no more per-game updates. If a result or
+  pick ever changes, re-run the full `build_history.py` to regenerate history.jsonl + baseline.json, then push.
+- **Known model characteristic (kept):** the goal model is a bit overconfident vs its own Elo basis —
+  single-match favourite win% runs ~3–4 pts above the Elo expectation. Root cause: `match_simulator.py`
+  maps Elo→goals linearly (`λ = 1.35 ± Δ/400`, underdog floored at 0.1). Lever = the **`/400` divisor**
+  (≈`/500` tracks Elo closely). The Modellen tab's **calibration plot bore this out but only mildly** (a
+  small sag at the top), so the divisor probably does NOT need changing for the Euros.
+- CI shows a harmless "Node 20 → 24" deprecation warning; bump action versions in `deploy.yml` eventually.
+
+## Post-tournament analysis (built 2026-07-20 — the retrospective)
+Once `tournament_over`, the UI flips from live prediction to retrospective. `body.finished` (toggled in
+`render()`) hides the Vinderodds side panel, the 🎲 random-scenario mode, the Slutspilsodds tab, the
+sim-count control bar and the "Scenarie hvor X vinder" buttons; the champion banner shows just "Vinder"
+(no %), the header `#subtitle` reframes as a retrospective, elim-strikethrough is off.
+- **Data pipeline:** `build_history.py` reconstructs each match-date's state by date-filtering results.tsv
+  + knockout.csv (NO git replay — both are self-dating), runs one 100k sim/snapshot → `data/history.jsonl`
+  (35 daily snapshots, per-participant win%/xpts/realized) + `data/baseline.json` (the day-0 snapshot:
+  per-team `team_xpts` + `team_std` + `optimal` squad, per-participant `part` win/xpts, per-team
+  `stage_reach`). `server.py` loads both and adds `actual_reach`. Terminology: UI says **"konkurrence"**
+  never "pulje".
+- **Konkurrence sub-views (finished): Stilling · Udvikling · Analyse · Holdpoint · Regler.**
+  - *Stilling* "Point" toggle → **Slutstilling** (final realized) / **Forventninger før turneringen**
+    (baseline xPoints; each row shows faktisk slutplacering + pre-tour win%; ★ optimal = the pre-tour
+    optimal squad, with its real points + would-be rank). `renderPools`, `baseMode`.
+  - *Udvikling* (`renderTrend`/`drawLineChart`) = two hand-rolled inline-SVG line charts (Vinderchance /
+    Point over tid) with a group|KO phase divider + a participant filter (legend click, Vis alle/Ryd → head-to-head).
+  - *Analyse* (`renderCompAnalysis`) = comp-specific, reacts to Trap/Andreas: "Hvor forudsigelig var
+    konkurrencen?" (winner's pre-tour odds · did the favourite win · gap to the realized-optimal) + "Boom
+    eller bust" (per-team std-dev risk/reward scatter, **flags as marks**, `varScatter`).
+  - *Holdpoint* (`renderTeams`) xPoint column → pre-tournament per-team value (labelled `xPoint*`).
+- **Modellen tab (top-level, finished-only, comp-AGNOSTIC, `renderModel`):** how well the Elo model
+  predicted the *tournament*. Panels: headline (champion's pre-tour title rank/odds · favourite hit-rate ·
+  champion **Brier** score vs a random guess) · Titelfavoritter vs virkeligheden · Træfsikkerhed pr. stadie
+  · **Kalibrering** reliability diagram (`calSvg`; all 48 teams × 6 stages binned, predicted vs actual).
+  Verdict: **strong** — Spain the #1 favourite won, top-4 favourites all reached the SF, Brier 0.56 vs 0.98
+  random, and well-calibrated (mild top-end overconfidence only).
+
+## Reusing for the Euros (~2028) — the roadmap
+The retrospective machinery above is driven by payload fields, so it **lights up automatically** once the
+data has the right shape. The real work is the ENGINE, which is hardcoded to WC2026's format:
+- **Format params (the actual refactor):** WC = 48 teams / 12 groups / R32 / best-8 thirds / host trio
+  (US+MX+CA boosts). Euro = **24 teams / 6 groups / R16 / best-4-of-6 thirds / host boost for the host
+  nation(s)** — note Euro 2028 = UK & Ireland, i.e. up to 5 host nations, not one. `simulate_tournament`,
+  the bracket wiring (`SLOT_FEEDERS` + `_bracket_rows` in server.py) and the 3rd-place pairings table
+  (`data/parsed_wc2026_combinations.txt`) all bake in the WC shape. Parameterize group count / advance
+  rules / KO round set / host boost.
+- **Stage keys** are listed in THREE places for the Modellen/boom-bust views — keep in sync when the KO
+  structure changes: `build_history.STAGE_KEYS`, server `_RIDX` + payload actual_reach indices, frontend
+  `M_STAGES`. Euro starts at R16 (drop `r32`) and the slot counts change (16/16→16/8/4/2/1).
+- **New data to supply:** fresh `Elo files/` (base Elo + fixtures + group results), `groups.txt`,
+  `prisliste.txt` + `trap_seeding.txt`, a new 3rd-place pairings table, and the rosters
+  (`TRAP_OPTIONS`/`ANDREAS_OPTIONS`). Revisit `trap_points`/`andreas_points` scoring if desired — the
+  boom/bust view showed Andreas's advance/eliminate bonuses make it much higher-variance than Trap.
+- **Live "over tid" during the Euro (nice-to-have):** have CI append one history.jsonl line per deploy in
+  the group stage (not just backfill at the end) → live daily granularity, then the same frozen
+  retrospective at the finish. `build_history.py`'s date-filtering already supports this.
+- **Decisional takeaways from WC2026 (for picking strategy):** the model was well-calibrated → trust its
+  team favourites as the backbone of picks. Andreas is far higher-variance than Trap (avg swing ±6.1 vs
+  ±3.5) → in Andreas the "optimal xPoints" squad is a weaker guide and calculated high-ceiling bets pay;
+  in Trap the model's projection is a tighter guide.
